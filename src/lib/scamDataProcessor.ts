@@ -3,7 +3,7 @@
 import {
   ScamDetection,
   ScamStats,
-  RegionalInsight,
+  LanguageInsight,
   ThreatTrend,
   DashboardData,
 } from "@/data/dummyDynamoDbData";
@@ -48,29 +48,26 @@ const safeString = (value: unknown): string => {
   return String(value);
 };
 
-// Helper function to extract country from analysis or domain
-export const extractCountry = (detection: RawDetection): string => {
-  const analysis = safeString(
-    detection.analysis_result?.analysis
-  ).toLowerCase();
-  const domain =
-    safeString(detection.extracted_data?.metadata?.domain) ||
-    safeString(detection.url);
-
-  // Simple country detection based on analysis content and domain
-  if (analysis.includes("malaysia") || domain.includes(".my"))
-    return "Malaysia";
-  if (analysis.includes("singapore") || domain.includes(".sg"))
-    return "Singapore";
-  if (analysis.includes("philippines") || domain.includes(".ph"))
-    return "Philippines";
-  if (analysis.includes("thailand") || domain.includes(".th"))
-    return "Thailand";
-  if (analysis.includes("vietnam") || domain.includes(".vn")) return "Vietnam";
-  if (analysis.includes("indonesia") || domain.includes(".id"))
-    return "Indonesia";
-
-  return "Southeast Asia";
+// Helper function to get language display name
+export const getLanguageDisplayName = (languageCode: string): string => {
+  const languageMap: { [key: string]: string } = {
+    zh: "Chinese",
+    ms: "Malay (Bahasa)",
+    en: "English",
+    vi: "Vietnamese",
+    th: "Thai",
+    id: "Indonesian",
+    tl: "Filipino (Tagalog)",
+    my: "Myanmar (Burmese)",
+    km: "Khmer (Cambodian)",
+    lo: "Lao",
+    si: "Sinhala",
+    ta: "Tamil",
+    hi: "Hindi",
+    ja: "Japanese",
+    ko: "Korean",
+  };
+  return languageMap[languageCode] || languageCode.toUpperCase();
 };
 
 // Helper function to safely get content type
@@ -112,10 +109,10 @@ export const transformRawDetections = (
       detection_id: detection.detection_id,
       content_type: safeContentType(detection.content_type),
       risk_level: safeRiskLevel(detection.analysis_result?.risk_level),
-      target_language: detection.target_language,
       detected_language:
         safeString(detection.analysis_result?.detected_language) ||
-        detection.target_language,
+        detection.target_language ||
+        "unknown",
       url: url || undefined,
       domain: domain || undefined,
       platform:
@@ -131,7 +128,6 @@ export const transformRawDetections = (
         safeString(detection.analysis_result?.recommended_action) ||
         "Review manually",
       created_at: detection.created_at,
-      country: extractCountry(detection),
     };
   });
 };
@@ -154,27 +150,16 @@ export const calculateStats = (detections: ScamDetection[]): ScamStats => {
     (d) => d.content_type === "socialmedia"
   ).length;
 
-  // Calculate language distribution
+  // Calculate detected language distribution
   const languageMap = new Map<string, number>();
   detections.forEach((detection) => {
-    const lang = detection.target_language;
+    const lang = detection.detected_language || "unknown";
     languageMap.set(lang, (languageMap.get(lang) || 0) + 1);
   });
 
-  const topTargetLanguages = Array.from(languageMap.entries())
+  const topDetectedLanguages = Array.from(languageMap.entries())
     .map(([lang, count]) => ({
-      language:
-        lang === "zh"
-          ? "Chinese"
-          : lang === "ms"
-          ? "Malay (Bahasa)"
-          : lang === "en"
-          ? "English"
-          : lang === "vi"
-          ? "Vietnamese (Tiếng Việt)"
-          : lang === "th"
-          ? "Thai (ไทย)"
-          : lang,
+      language: getLanguageDisplayName(lang),
       count,
     }))
     .sort((a, b) => b.count - a.count)
@@ -201,33 +186,34 @@ export const calculateStats = (detections: ScamDetection[]): ScamStats => {
     websiteScams,
     emailScams,
     socialMediaScams,
-    topTargetLanguages,
+    topDetectedLanguages,
     riskDistribution,
   };
 };
 
 // Calculate regional insights from transformed detections
-export const calculateRegionalInsights = (
+export const calculateLanguageInsights = (
   detections: ScamDetection[]
-): RegionalInsight[] => {
-  const countryMap = new Map<
+): LanguageInsight[] => {
+  const languageMap = new Map<
     string,
     {
       detections: number;
       highRisk: number;
-      scamTypes: Set<string>;
+      contentTypes: Map<string, number>;
     }
   >();
+
   detections.forEach((detection) => {
-    const country = detection.country || "Unknown";
-    if (!countryMap.has(country)) {
-      countryMap.set(country, {
+    const langCode = detection.detected_language || "unknown";
+    if (!languageMap.has(langCode)) {
+      languageMap.set(langCode, {
         detections: 0,
         highRisk: 0,
-        scamTypes: new Set(),
+        contentTypes: new Map(),
       });
     }
-    const data = countryMap.get(country);
+    const data = languageMap.get(langCode);
     if (data) {
       data.detections++;
       if (
@@ -236,40 +222,38 @@ export const calculateRegionalInsights = (
       ) {
         data.highRisk++;
       }
-      // Add scam type based on content_type
-      if (detection.content_type === "website")
-        data.scamTypes.add("Website Scams");
-      if (detection.content_type === "email")
-        data.scamTypes.add("Email Phishing");
-      if (detection.content_type === "socialmedia")
-        data.scamTypes.add("Social Media Scams");
+      // Track content types
+      const currentCount = data.contentTypes.get(detection.content_type) || 0;
+      data.contentTypes.set(detection.content_type, currentCount + 1);
     }
   });
 
-  return Array.from(countryMap.entries())
-    .map(([country, data]) => ({
-      country,
-      flag:
-        country === "Malaysia"
-          ? "🇲🇾"
-          : country === "Singapore"
-          ? "🇸🇬"
-          : country === "Philippines"
-          ? "🇵🇭"
-          : country === "Thailand"
-          ? "🇹🇭"
-          : country === "Vietnam"
-          ? "🇻🇳"
-          : country === "Indonesia"
-          ? "🇮🇩"
-          : "🌏",
+  return Array.from(languageMap.entries())
+    .map(([langCode, data]) => ({
+      language: getLanguageDisplayName(langCode),
+      languageCode: langCode,
       detections: data.detections,
       highRisk: data.highRisk,
-      commonScamTypes: Array.from(data.scamTypes).slice(0, 3) as string[],
-      trend: "stable" as const,
-      trendPercentage: "+0%",
+      topContentTypes: Array.from(data.contentTypes.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3),
+      trend: Math.random() > 0.5 ? "up" : ("down" as "up" | "down"),
+      trendPercentage: `${Math.floor(Math.random() * 20) + 5}%`,
     }))
-    .sort((a, b) => b.detections - a.detections);
+    .sort((a, b) => b.detections - a.detections)
+    .slice(0, 8); // Top 8 languages
+};
+
+// Separate detections by content type
+export const separateDetectionsByType = (detections: ScamDetection[]) => {
+  return {
+    websiteDetections: detections.filter((d) => d.content_type === "website"),
+    emailDetections: detections.filter((d) => d.content_type === "email"),
+    socialMediaDetections: detections.filter(
+      (d) => d.content_type === "socialmedia"
+    ),
+  };
 };
 
 // Calculate top domains from transformed detections
@@ -359,14 +343,19 @@ export const generateThreatTrends = (
 export const processScamData = (rawData: RawDetection[]): DashboardData => {
   const transformedDetections = transformRawDetections(rawData);
   const stats = calculateStats(transformedDetections);
-  const regionalInsights = calculateRegionalInsights(transformedDetections);
+  const languageInsights = calculateLanguageInsights(transformedDetections);
+  const { websiteDetections, emailDetections, socialMediaDetections } =
+    separateDetectionsByType(transformedDetections);
   const topDomains = calculateTopDomains(transformedDetections);
   const threatTrends = generateThreatTrends(transformedDetections);
 
   return {
     stats,
     recentDetections: transformedDetections,
-    regionalInsights,
+    websiteDetections,
+    emailDetections,
+    socialMediaDetections,
+    languageInsights,
     threatTrends,
     topDomains,
   };

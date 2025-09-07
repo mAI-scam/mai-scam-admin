@@ -6,16 +6,14 @@ export interface ScamDetection {
   id: string;
   detection_id: string;
   content_type: "website" | "email" | "socialmedia";
-  risk_level: "Low" | "Medium" | "High" | "Critical";
-  target_language: string;
-  detected_language: string;
+  risk_level: "Low" | "Medium" | "High";
+  detected_language: string; // The actual language of the scam content (base_language)
   url?: string;
   domain?: string;
   platform?: string;
   analysis: string;
   recommended_action: string;
   created_at: string;
-  country?: string;
 }
 
 export interface ScamStats {
@@ -24,16 +22,16 @@ export interface ScamStats {
   websiteScams: number;
   emailScams: number;
   socialMediaScams: number;
-  topTargetLanguages: { language: string; count: number }[];
+  topDetectedLanguages: { language: string; count: number }[];
   riskDistribution: { risk: string; count: number; percentage: number }[];
 }
 
-export interface RegionalInsight {
-  country: string;
-  flag: string;
+export interface LanguageInsight {
+  language: string;
+  languageCode: string;
   detections: number;
   highRisk: number;
-  commonScamTypes: string[];
+  topContentTypes: Array<{ type: string; count: number }>;
   trend: "up" | "down" | "stable";
   trendPercentage: string;
 }
@@ -49,7 +47,10 @@ export interface ThreatTrend {
 export interface DashboardData {
   stats: ScamStats;
   recentDetections: ScamDetection[];
-  regionalInsights: RegionalInsight[];
+  websiteDetections: ScamDetection[];
+  emailDetections: ScamDetection[];
+  socialMediaDetections: ScamDetection[];
+  languageInsights: LanguageInsight[];
   threatTrends: ThreatTrend[];
   topDomains: { domain: string; count: number; riskLevel: string }[];
 }

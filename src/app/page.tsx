@@ -6,7 +6,7 @@ import SignIn from "@/components/SignIn";
 import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (

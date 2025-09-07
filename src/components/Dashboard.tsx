@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDummyData, DashboardData } from "@/data/dummyDynamoDbData";
 import {
@@ -25,7 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   const navigation = [
     { name: "Overview", id: "overview", icon: "🛡️" },
     { name: "Detections", id: "detections", icon: "🔍" },
-    { name: "Regional Insights", id: "regional", icon: "🌏" },
+    { name: "Language Insights", id: "language", icon: "🌐" },
     { name: "Threat Analysis", id: "threats", icon: "⚠️" },
   ];
 
@@ -136,8 +137,8 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
               </h3>
               <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                 <p>
-                  You're signed in with Google, but showing test data because
-                  AWS DynamoDB is not configured on the server.
+                  You&apos;re signed in with Google, but showing test data
+                  because AWS DynamoDB is not configured on the server.
                 </p>
                 <p className="mt-1">
                   To see real scam detection data, please set up these
@@ -192,8 +193,8 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
         return <OverviewSection {...sectionProps} />;
       case "detections":
         return <DetectionsSection {...sectionProps} />;
-      case "regional":
-        return <RegionalInsightsSection {...sectionProps} />;
+      case "language":
+        return <LanguageInsightsSection {...sectionProps} />;
       case "threats":
         return <ThreatAnalysisSection {...sectionProps} />;
       default:
@@ -253,9 +254,11 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
             <div className="flex-shrink-0 mr-3">
               <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden">
                 {user?.avatar && user.avatar.startsWith("http") ? (
-                  <img
+                  <Image
                     src={user.avatar}
                     alt={user.name || "User"}
+                    width={40}
+                    height={40}
                     className="w-full h-full object-cover rounded-full"
                   />
                 ) : (
@@ -340,11 +343,12 @@ interface SectionProps {
 
 // Overview Section - Scam Detection Dashboard
 const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
-  const stats = [
+  // First row stats
+  const mainStats = [
     {
       name: "Total Detections",
       value: data.stats.totalDetections.toLocaleString(),
-      icon: "🔍",
+      icon: "🛡️",
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-900/20",
     },
@@ -359,23 +363,45 @@ const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
       name: "Website Scams",
       value: data.stats.websiteScams.toLocaleString(),
       icon: "🌐",
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+      color: "text-green-600",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
     },
     {
       name: "Email Phishing",
       value: data.stats.emailScams.toLocaleString(),
       icon: "📧",
-      color: "text-orange-600",
-      bgColor: "bg-orange-50 dark:bg-orange-900/20",
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
+    },
+    {
+      name: "Social Media X",
+      value: data.stats.socialMediaScams.toLocaleString(),
+      icon: "📱",
+      color: "text-purple-600",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+      <div className="flex items-center space-x-3">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Dashboard Overview
+        </h3>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            dataSource === "dynamodb"
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+          }`}
+        >
+          {dataSource === "dynamodb" ? "🔴 Live Data" : "🧪 Test Data"}
+        </span>
+      </div>
+
+      {/* First Row - Main Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {mainStats.map((stat) => (
           <div
             key={stat.name}
             className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
@@ -448,39 +474,48 @@ const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
           </div>
         </div>
 
-        {/* Target Languages */}
+        {/* Detected Languages */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Target Languages
+            Southeast Asia Language Overview
           </h3>
-          <div className="space-y-4">
-            {data.stats.topTargetLanguages.map((lang, index) => (
+          <div className="space-y-3">
+            {data.languageInsights.slice(0, 6).map((language) => (
               <div
-                key={lang.language}
-                className="flex items-center justify-between"
+                key={language.languageCode}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex items-center">
-                  <span className="text-sm text-gray-500 dark:text-gray-400 w-4">
-                    {index + 1}.
-                  </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white ml-2">
-                    {lang.language}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-3">
-                    <div
-                      className="bg-indigo-600 h-2 rounded-full"
-                      style={{
-                        width: `${
-                          (lang.count / data.stats.totalDetections) * 100
-                        }%`,
-                      }}
-                    ></div>
+                  <div className="text-lg mr-3">🌐</div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {language.language}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {language.detections.toLocaleString()} detections
+                    </div>
                   </div>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
-                    {lang.count.toLocaleString()}
-                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-red-600 dark:text-red-400">
+                    {language.highRisk} high risk
+                  </div>
+                  <div
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      language.trend === "up"
+                        ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                        : language.trend === "down"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                    }`}
+                  >
+                    {language.trend === "up"
+                      ? "📈"
+                      : language.trend === "down"
+                      ? "📉"
+                      : "➡️"}{" "}
+                    {language.trendPercentage}
+                  </div>
                 </div>
               </div>
             ))}
@@ -494,20 +529,20 @@ const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
           Southeast Asia Scam Overview
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {data.regionalInsights.slice(0, 6).map((region) => (
+          {data.languageInsights.slice(0, 6).map((language) => (
             <div
-              key={region.country}
+              key={language.languageCode}
               className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
-              <div className="text-3xl mb-2">{region.flag}</div>
+              <div className="text-3xl mb-2">🌐</div>
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                {region.country}
+                {language.language}
               </h4>
               <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                {region.detections.toLocaleString()}
+                {language.detections.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {region.highRisk} high risk
+                {language.highRisk} high risk
               </p>
             </div>
           ))}
@@ -625,10 +660,7 @@ const DetectionsSection: React.FC<SectionProps> = ({ data, dataSource }) => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {detection.country || "Unknown"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {detection.target_language.toUpperCase()}
+                    {detection.detected_language.toUpperCase()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {new Date(detection.created_at).toLocaleDateString()}
@@ -644,7 +676,7 @@ const DetectionsSection: React.FC<SectionProps> = ({ data, dataSource }) => {
 };
 
 // Regional Insights Section
-const RegionalInsightsSection: React.FC<SectionProps> = ({
+const LanguageInsightsSection: React.FC<SectionProps> = ({
   data,
   dataSource,
 }) => {
@@ -667,38 +699,38 @@ const RegionalInsightsSection: React.FC<SectionProps> = ({
 
       {/* Regional Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.regionalInsights.map((region) => (
+        {data.languageInsights.map((language) => (
           <div
-            key={region.country}
+            key={language.languageCode}
             className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <span className="text-3xl mr-3">{region.flag}</span>
+                <span className="text-2xl mr-3">🌐</span>
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {region.country}
+                    {language.language}
                   </h4>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {region.detections.toLocaleString()} detections
+                    {language.detections.toLocaleString()} detections
                   </p>
                 </div>
               </div>
               <div
                 className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  region.trend === "up"
+                  language.trend === "up"
                     ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                    : region.trend === "down"
+                    : language.trend === "down"
                     ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                     : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                 }`}
               >
-                {region.trend === "up"
+                {language.trend === "up"
                   ? "📈"
-                  : region.trend === "down"
+                  : language.trend === "down"
                   ? "📉"
                   : "➡️"}{" "}
-                {region.trendPercentage}
+                {language.trendPercentage}
               </div>
             </div>
 
@@ -708,7 +740,7 @@ const RegionalInsightsSection: React.FC<SectionProps> = ({
                   High Risk:
                 </span>
                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  {region.highRisk.toLocaleString()}
+                  {language.highRisk.toLocaleString()}
                 </span>
               </div>
 
@@ -716,22 +748,24 @@ const RegionalInsightsSection: React.FC<SectionProps> = ({
                 <div
                   className="bg-red-600 h-2 rounded-full"
                   style={{
-                    width: `${(region.highRisk / region.detections) * 100}%`,
+                    width: `${
+                      (language.highRisk / language.detections) * 100
+                    }%`,
                   }}
                 ></div>
               </div>
 
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Common Scam Types:
+                  Top Content Types:
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  {region.commonScamTypes.map((type) => (
+                  {language.topContentTypes.map((contentType, index) => (
                     <span
-                      key={type}
+                      key={index}
                       className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 rounded"
                     >
-                      {type}
+                      {contentType.type} ({contentType.count})
                     </span>
                   ))}
                 </div>
@@ -895,16 +929,16 @@ const ThreatAnalysisSection: React.FC<SectionProps> = ({
                 🎯 Most Targeted Countries
               </h5>
               <div className="space-y-1">
-                {data.regionalInsights.slice(0, 3).map((region, index) => (
+                {data.languageInsights.slice(0, 3).map((language, index) => (
                   <div
-                    key={region.country}
+                    key={language.languageCode}
                     className="flex items-center justify-between"
                   >
                     <span className="text-xs text-blue-700 dark:text-blue-300">
-                      {index + 1}. {region.flag} {region.country}
+                      {index + 1}. 🌐 {language.language}
                     </span>
                     <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                      {region.detections.toLocaleString()}
+                      {language.detections.toLocaleString()}
                     </span>
                   </div>
                 ))}
@@ -916,7 +950,7 @@ const ThreatAnalysisSection: React.FC<SectionProps> = ({
                 🌐 Language Targeting
               </h5>
               <div className="space-y-1">
-                {data.stats.topTargetLanguages
+                {data.stats.topDetectedLanguages
                   .slice(0, 3)
                   .map((lang, index) => (
                     <div
@@ -969,8 +1003,7 @@ const ThreatAnalysisSection: React.FC<SectionProps> = ({
                         {detection.domain || detection.platform || "Unknown"}
                       </span>
                       <div className="text-xs text-red-600 dark:text-red-400">
-                        {detection.country} •{" "}
-                        {detection.target_language.toUpperCase()}
+                        {detection.detected_language.toUpperCase()}
                       </div>
                     </div>
                   </div>
