@@ -5,10 +5,10 @@ import { processScamData } from "@/lib/scamDataProcessor";
 
 // AWS DynamoDB configuration
 const dynamoClient = new DynamoDBClient({
-  region: process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1",
+  region: process.env.AWS_REGION || "us-east-1",
   credentials: {
-    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || "",
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 });
 
@@ -16,39 +16,45 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 // Table name for scam detection results
 const SCAM_DETECTION_TABLE =
-  process.env.NEXT_PUBLIC_DYNAMODB_SCAM_TABLE || "mai-scam-detection-results";
+  process.env.DYNAMODB_SCAM_TABLE || "mai-scam-detection-results";
 
-// Interfaces for DynamoDB scam detection data
+// Flexible interface for DynamoDB scam detection data (matches RawDetection)
 interface DynamoScamDetection {
   "mai-scam": string; // partition key
   detection_id: string;
   created_at: string;
-  content_type: "website" | "email" | "socialmedia";
+  content_type: unknown; // Flexible for NoSQL
   target_language: string;
-  timestamp: string;
-  ttl: number;
-  analysis_result: {
-    risk_level: string;
-    analysis: string;
-    detected_language: string;
-    recommended_action: string;
-    legitimate_url?: string;
+  timestamp?: string;
+  ttl?: number;
+  analysis_result?: {
+    risk_level?: unknown;
+    analysis?: unknown;
+    detected_language?: unknown;
+    recommended_action?: unknown;
+    legitimate_url?: unknown;
+    [key: string]: unknown; // Allow additional fields
   };
   extracted_data?: {
     metadata?: {
-      domain?: string;
+      domain?: unknown;
+      [key: string]: unknown;
     };
     signals?: {
       platform_meta?: {
-        platform?: string;
+        platform?: unknown;
+        [key: string]: unknown;
       };
+      [key: string]: unknown;
     };
+    [key: string]: unknown;
   };
   signals?: Record<string, unknown>;
-  url?: string;
-  domain?: string;
-  platform?: string;
-  content?: string;
+  url?: unknown;
+  domain?: unknown;
+  platform?: unknown;
+  content?: unknown;
+  [key: string]: unknown; // Allow any additional fields from NoSQL
 }
 
 // Fetch scam detections from DynamoDB
@@ -101,8 +107,8 @@ export const fetchDashboardDataFromDynamoDB =
 // Helper function to check if DynamoDB is properly configured
 export const isDynamoDBConfigured = (): boolean => {
   return !!(
-    process.env.NEXT_PUBLIC_AWS_REGION &&
-    process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID &&
-    process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY
+    process.env.AWS_REGION &&
+    process.env.AWS_ACCESS_KEY_ID &&
+    process.env.AWS_SECRET_ACCESS_KEY
   );
 };

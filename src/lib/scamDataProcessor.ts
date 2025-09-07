@@ -8,38 +8,54 @@ import {
   DashboardData,
 } from "@/data/dummyDynamoDbData";
 
-// Define a type for raw detection data
+// Define a flexible type for raw detection data from NoSQL (DynamoDB)
 interface RawDetection {
   "mai-scam": string;
   detection_id: string;
-  content_type: "website" | "email" | "socialmedia";
+  content_type: unknown; // Flexible for NoSQL
   target_language: string;
   created_at: string;
   analysis_result?: {
-    risk_level?: string;
-    analysis?: string;
-    detected_language?: string;
-    recommended_action?: string;
+    risk_level?: unknown;
+    analysis?: unknown;
+    detected_language?: unknown;
+    recommended_action?: unknown;
+    [key: string]: unknown; // Allow additional fields
   };
   extracted_data?: {
     metadata?: {
-      domain?: string;
+      domain?: unknown;
+      [key: string]: unknown;
     };
     signals?: {
       platform_meta?: {
-        platform?: string;
+        platform?: unknown;
+        [key: string]: unknown;
       };
+      [key: string]: unknown;
     };
+    [key: string]: unknown;
   };
-  url?: string;
-  platform?: string;
+  url?: unknown;
+  platform?: unknown;
+  [key: string]: unknown; // Allow any additional fields from NoSQL
 }
+
+// Helper function to safely convert unknown to string
+const safeString = (value: unknown): string => {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return String(value);
+};
 
 // Helper function to extract country from analysis or domain
 export const extractCountry = (detection: RawDetection): string => {
-  const analysis = detection.analysis_result?.analysis?.toLowerCase() || "";
+  const analysis = safeString(
+    detection.analysis_result?.analysis
+  ).toLowerCase();
   const domain =
-    detection.extracted_data?.metadata?.domain || detection.url || "";
+    safeString(detection.extracted_data?.metadata?.domain) ||
+    safeString(detection.url);
 
   // Simple country detection based on analysis content and domain
   if (analysis.includes("malaysia") || domain.includes(".my"))
@@ -57,35 +73,67 @@ export const extractCountry = (detection: RawDetection): string => {
   return "Southeast Asia";
 };
 
+// Helper function to safely get content type
+const safeContentType = (
+  value: unknown
+): "website" | "email" | "socialmedia" => {
+  const str = safeString(value).toLowerCase();
+  if (str === "website" || str === "email" || str === "socialmedia") {
+    return str as "website" | "email" | "socialmedia";
+  }
+  return "website"; // default fallback
+};
+
+// Helper function to safely get risk level
+const safeRiskLevel = (value: unknown): "低" | "中" | "高" | "高风险" => {
+  const str = safeString(value);
+  if (str.includes("低") || str.toLowerCase().includes("low")) return "低";
+  if (str.includes("中") || str.toLowerCase().includes("medium")) return "中";
+  if (str.includes("高") || str.toLowerCase().includes("high")) return "高";
+  if (str.includes("高风险") || str.toLowerCase().includes("high risk"))
+    return "高风险";
+  return "未知" as "低"; // fallback, cast to satisfy type
+};
+
 // Transform raw DynamoDB data to ScamDetection format
 export const transformRawDetections = (
   rawData: RawDetection[]
 ): ScamDetection[] => {
-  return rawData.map((detection) => ({
-    id: detection["mai-scam"],
-    detection_id: detection.detection_id,
-    content_type: detection.content_type as "website" | "email" | "socialmedia",
-    risk_level: (detection.analysis_result?.risk_level || "未知") as
-      | "低"
-      | "中"
-      | "高"
-      | "高风险",
-    target_language: detection.target_language,
-    detected_language:
-      detection.analysis_result?.detected_language || detection.target_language,
-    url: detection.url || detection.extracted_data?.metadata?.domain,
-    domain:
-      detection.extracted_data?.metadata?.domain ||
-      detection.url?.split("/")[2],
-    platform:
-      detection.extracted_data?.signals?.platform_meta?.platform ||
-      detection.platform,
-    analysis: detection.analysis_result?.analysis || "No analysis available",
-    recommended_action:
-      detection.analysis_result?.recommended_action || "Review manually",
-    created_at: detection.created_at,
-    country: extractCountry(detection),
-  }));
+  return rawData.map((detection) => {
+    const url =
+      safeString(detection.url) ||
+      safeString(detection.extracted_data?.metadata?.domain);
+    const domain =
+      safeString(detection.extracted_data?.metadata?.domain) ||
+      (url ? url.split("/")[2] : "");
+
+    return {
+      id: detection["mai-scam"],
+      detection_id: detection.detection_id,
+      content_type: safeContentType(detection.content_type),
+      risk_level: safeRiskLevel(detection.analysis_result?.risk_level),
+      target_language: detection.target_language,
+      detected_language:
+        safeString(detection.analysis_result?.detected_language) ||
+        detection.target_language,
+      url: url || undefined,
+      domain: domain || undefined,
+      platform:
+        safeString(
+          detection.extracted_data?.signals?.platform_meta?.platform
+        ) ||
+        safeString(detection.platform) ||
+        undefined,
+      analysis:
+        safeString(detection.analysis_result?.analysis) ||
+        "No analysis available",
+      recommended_action:
+        safeString(detection.analysis_result?.recommended_action) ||
+        "Review manually",
+      created_at: detection.created_at,
+      country: extractCountry(detection),
+    };
+  });
 };
 
 // Calculate statistics from transformed detections
