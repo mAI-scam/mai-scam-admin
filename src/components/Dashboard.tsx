@@ -4,9 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDummyData, DashboardData } from "@/data/dummyDynamoDbData";
 import {
-  fetchDashboardDataFromDynamoDB,
+  fetchDashboardDataFromAPI,
   isDynamoDBConfigured,
-} from "@/lib/dynamodb";
+} from "@/lib/dashboardApi";
 
 interface DashboardProps {
   children?: React.ReactNode;
@@ -46,11 +46,12 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           // Google user gets DynamoDB data if configured, otherwise dummy data
           console.log("Loading data for Google user...");
 
-          if (isDynamoDBConfigured()) {
+          const isConfigured = await isDynamoDBConfigured();
+          if (isConfigured) {
             console.log(
               "DynamoDB is configured, attempting to fetch real data..."
             );
-            const dynamoData = await fetchDashboardDataFromDynamoDB();
+            const dynamoData = await fetchDashboardDataFromAPI();
 
             if (dynamoData) {
               setDashboardData(dynamoData);
@@ -65,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           } else {
             console.log("DynamoDB not configured, using dummy data");
             console.log(
-              "To use real data, please set up these environment variables:"
+              "To use real data, please set up these environment variables on the server:"
             );
             console.log("- AWS_REGION");
             console.log("- AWS_ACCESS_KEY_ID");
@@ -136,11 +137,11 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
               <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                 <p>
                   You're signed in with Google, but showing test data because
-                  AWS DynamoDB is not configured.
+                  AWS DynamoDB is not configured on the server.
                 </p>
                 <p className="mt-1">
                   To see real scam detection data, please set up these
-                  environment variables:
+                  environment variables in your <code>.env</code> file:
                 </p>
                 <ul className="mt-2 list-disc list-inside space-y-1 text-xs font-mono">
                   <li>AWS_REGION</li>
@@ -148,6 +149,10 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
                   <li>AWS_SECRET_ACCESS_KEY</li>
                   <li>DYNAMODB_SCAM_TABLE (optional)</li>
                 </ul>
+                <p className="mt-2 text-xs">
+                  Note: These are server-side environment variables and should
+                  NOT use NEXT_PUBLIC_ prefix for security.
+                </p>
               </div>
             </div>
           </div>
@@ -418,11 +423,10 @@ const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
                 <div className="flex items-center">
                   <div
                     className={`w-3 h-3 rounded-full mr-3 ${
-                      risk.risk.includes("高") ||
-                      risk.risk.toLowerCase().includes("high")
+                      risk.risk.toLowerCase().includes("high") ||
+                      risk.risk.toLowerCase().includes("critical")
                         ? "bg-red-500"
-                        : risk.risk.includes("中") ||
-                          risk.risk.toLowerCase().includes("medium")
+                        : risk.risk.toLowerCase().includes("medium")
                         ? "bg-yellow-500"
                         : "bg-green-500"
                     }`}
@@ -516,12 +520,12 @@ const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
 // Detections Section - Recent Scam Detections
 const DetectionsSection: React.FC<SectionProps> = ({ data, dataSource }) => {
   const getRiskLevelColor = (riskLevel: string) => {
-    if (riskLevel.includes("高") || riskLevel.toLowerCase().includes("high")) {
-      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-    } else if (
-      riskLevel.includes("中") ||
-      riskLevel.toLowerCase().includes("medium")
+    if (
+      riskLevel.toLowerCase().includes("high") ||
+      riskLevel.toLowerCase().includes("critical")
     ) {
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+    } else if (riskLevel.toLowerCase().includes("medium")) {
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
     } else {
       return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
@@ -763,11 +767,10 @@ const RegionalInsightsSection: React.FC<SectionProps> = ({
               </div>
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  domain.riskLevel.includes("高") ||
-                  domain.riskLevel.toLowerCase().includes("high")
+                  domain.riskLevel.toLowerCase().includes("high") ||
+                  domain.riskLevel.toLowerCase().includes("critical")
                     ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                    : domain.riskLevel.includes("中") ||
-                      domain.riskLevel.toLowerCase().includes("medium")
+                    : domain.riskLevel.toLowerCase().includes("medium")
                     ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
                     : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                 }`}
@@ -943,8 +946,8 @@ const ThreatAnalysisSection: React.FC<SectionProps> = ({
           {data.recentDetections
             .filter(
               (d) =>
-                d.risk_level.includes("高") ||
-                d.risk_level.toLowerCase().includes("high")
+                d.risk_level.toLowerCase().includes("high") ||
+                d.risk_level.toLowerCase().includes("critical")
             )
             .slice(0, 3)
             .map((detection) => (

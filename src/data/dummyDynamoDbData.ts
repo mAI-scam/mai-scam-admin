@@ -6,7 +6,7 @@ export interface ScamDetection {
   id: string;
   detection_id: string;
   content_type: "website" | "email" | "socialmedia";
-  risk_level: "低" | "中" | "高" | "高风险";
+  risk_level: "Low" | "Medium" | "High" | "Critical";
   target_language: string;
   detected_language: string;
   url?: string;
@@ -65,7 +65,7 @@ const rawDynamoDbData = [
     ttl: 1765004304,
     analysis_result: {
       legitimate_url: "https://shopee.com.my/",
-      risk_level: "高",
+      risk_level: "High",
       analysis:
         "该网站模拟了Shopee电商平台，但域名不正确，并且明确声明本身是黑客马拉松演示网站，存在欺诈风险。 网站显示虚假折扣和商品价格，试图诱骗用户。",
       detected_language: "ms",
@@ -222,7 +222,7 @@ const rawDynamoDbData = [
     "mai-scam": "63f90c9086563d51",
     ttl: 1765004345,
     analysis_result: {
-      risk_level: "高风险 (gāo fēng xiǎn)",
+      risk_level: "Critical",
       text_analysis:
         '帖子使用了传奇和赢钱等诱人词汇，营造紧迫感，诱导用户立即行动。它承诺非凡的回报，这通常是金融诈骗的标志。(Tiězi shǐyòngle "chuánqí" hé "yíng qián" děng yòurén cíhuì, yíngzào jǐnpògǎn, yòudǎo yònghù lìjí xíngdòng. Tā chéngnuò fēifán de huíbào, zhè tōngcháng shì jīnróng zhàpiàn de biāozhì.)',
       analysis:
@@ -355,7 +355,7 @@ const rawDynamoDbData = [
     ttl: 1765004278,
     analysis_result: {
       legitimate_url: null,
-      risk_level: "中",
+      risk_level: "Medium",
       analysis:
         "该网站声称是亚洲最佳在线赌场，并赞助多个体育赛事，但域名注册时间短，且包含数字和随机子域名，存在潜在风险。",
       detected_language: "zh",
@@ -499,7 +499,7 @@ const rawDynamoDbData = [
     "mai-scam": "aaf7fe6f3f924937",
     ttl: 1765004257,
     analysis_result: {
-      risk_level: "高",
+      risk_level: "High",
       analysis:
         "此邮件声称您的银行账户已被锁定，并要求您点击链接进行验证。该链接指向一个可疑域名（bankn3gara.xyz），与马来西亚国家银行的官方网站不符，属于网络钓鱼攻击。",
       detected_language: "ms",

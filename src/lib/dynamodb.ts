@@ -3,12 +3,18 @@ import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { DashboardData } from "@/data/dummyDynamoDbData";
 import { processScamData } from "@/lib/scamDataProcessor";
 
+// Environment variables
+const AWS_REGION = process.env.AWS_REGION;
+const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+const DYNAMODB_SCAM_TABLE = process.env.DYNAMODB_SCAM_TABLE;
+
 // AWS DynamoDB configuration
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: AWS_REGION || "us-east-1",
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+    accessKeyId: AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: AWS_SECRET_ACCESS_KEY || "",
   },
 });
 
@@ -16,7 +22,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 // Table name for scam detection results
 const SCAM_DETECTION_TABLE =
-  process.env.DYNAMODB_SCAM_TABLE || "mai-scam-detection-results";
+  DYNAMODB_SCAM_TABLE || "mai-scam-detection-results";
 
 // Flexible interface for DynamoDB scam detection data (matches RawDetection)
 interface DynamoScamDetection {
@@ -106,9 +112,20 @@ export const fetchDashboardDataFromDynamoDB =
 
 // Helper function to check if DynamoDB is properly configured
 export const isDynamoDBConfigured = (): boolean => {
-  return !!(
-    process.env.AWS_REGION &&
-    process.env.AWS_ACCESS_KEY_ID &&
-    process.env.AWS_SECRET_ACCESS_KEY
+  console.log("🔍 Checking DynamoDB Configuration:");
+  console.log("AWS_REGION:", AWS_REGION ? "✅ Set" : "❌ Missing");
+  console.log(
+    "AWS_ACCESS_KEY_ID:",
+    AWS_ACCESS_KEY_ID ? "✅ Set" : "❌ Missing"
   );
+  console.log(
+    "AWS_SECRET_ACCESS_KEY:",
+    AWS_SECRET_ACCESS_KEY ? "✅ Set" : "❌ Missing"
+  );
+  console.log(
+    "DYNAMODB_SCAM_TABLE:",
+    DYNAMODB_SCAM_TABLE || "Using default: mai-scam-detection-results"
+  );
+
+  return !!(AWS_REGION && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY);
 };

@@ -85,14 +85,14 @@ const safeContentType = (
 };
 
 // Helper function to safely get risk level
-const safeRiskLevel = (value: unknown): "低" | "中" | "高" | "高风险" => {
+const safeRiskLevel = (value: unknown): "Low" | "Medium" | "High" => {
   const str = safeString(value);
-  if (str.includes("低") || str.toLowerCase().includes("low")) return "低";
-  if (str.includes("中") || str.toLowerCase().includes("medium")) return "中";
-  if (str.includes("高") || str.toLowerCase().includes("high")) return "高";
-  if (str.includes("高风险") || str.toLowerCase().includes("high risk"))
-    return "高风险";
-  return "未知" as "低"; // fallback, cast to satisfy type
+  if (str.includes("低") || str.toLowerCase().includes("low")) return "Low";
+  if (str.includes("中") || str.toLowerCase().includes("medium"))
+    return "Medium";
+
+  if (str.includes("高") || str.toLowerCase().includes("high")) return "High";
+  return "Low"; // fallback to lowest risk
 };
 
 // Transform raw DynamoDB data to ScamDetection format
@@ -141,7 +141,8 @@ export const calculateStats = (detections: ScamDetection[]): ScamStats => {
   const totalDetections = detections.length;
   const highRiskDetections = detections.filter(
     (d) =>
-      d.risk_level.includes("高") || d.risk_level.toLowerCase().includes("high")
+      d.risk_level.toLowerCase().includes("high") ||
+      d.risk_level.toLowerCase().includes("critical")
   ).length;
   const websiteScams = detections.filter(
     (d) => d.content_type === "website"
@@ -164,7 +165,7 @@ export const calculateStats = (detections: ScamDetection[]): ScamStats => {
     .map(([lang, count]) => ({
       language:
         lang === "zh"
-          ? "Chinese (中文)"
+          ? "Chinese"
           : lang === "ms"
           ? "Malay (Bahasa)"
           : lang === "en"
@@ -230,8 +231,8 @@ export const calculateRegionalInsights = (
     if (data) {
       data.detections++;
       if (
-        detection.risk_level.includes("高") ||
-        detection.risk_level.toLowerCase().includes("high")
+        detection.risk_level.toLowerCase().includes("high") ||
+        detection.risk_level.toLowerCase().includes("critical")
       ) {
         data.highRisk++;
       }
@@ -283,8 +284,12 @@ export const calculateTopDomains = (
         existing.count++;
         // Keep highest risk level
         if (
-          detection.risk_level.includes("高") &&
-          !existing.riskLevel.includes("高")
+          (detection.risk_level.toLowerCase().includes("high") ||
+            detection.risk_level.toLowerCase().includes("critical")) &&
+          !(
+            existing.riskLevel.toLowerCase().includes("high") ||
+            existing.riskLevel.toLowerCase().includes("critical")
+          )
         ) {
           existing.riskLevel = detection.risk_level;
         }
