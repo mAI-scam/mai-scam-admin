@@ -7,7 +7,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { supabase, getSupabaseUser, SupabaseUser } from "@/lib/supabase";
+import { supabase, getSupabaseUser } from "@/lib/supabase";
 
 // User interface
 export interface User {
@@ -101,31 +101,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth state changes from Supabase
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
-      console.log("Auth state changed:", event, session?.user?.email);
-
-      if (event === "SIGNED_IN" && session?.user) {
-        const supabaseUser = getSupabaseUser(session);
-        if (supabaseUser) {
-          const user: User = {
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            name: supabaseUser.name,
-            avatar: supabaseUser.avatar_url,
-            authType: "google",
-            provider: supabaseUser.provider,
+    } = supabase.auth.onAuthStateChange(
+      async (
+        event: string,
+        session: {
+          user?: {
+            email?: string;
+            id: string;
+            user_metadata?: Record<string, unknown>;
+            app_metadata?: Record<string, unknown>;
           };
-          setUser(user);
-          // Remove test user if exists
-          localStorage.removeItem("testUser");
-        }
-      } else if (event === "SIGNED_OUT") {
-        // Only clear if it's a Google user being signed out
-        if (user?.authType === "google") {
-          setUser(null);
+        } | null
+      ) => {
+        console.log("Auth state changed:", event, session?.user?.email);
+
+        if (event === "SIGNED_IN" && session?.user) {
+          const supabaseUser = getSupabaseUser(session);
+          if (supabaseUser) {
+            const user: User = {
+              id: supabaseUser.id,
+              email: supabaseUser.email,
+              name: supabaseUser.name,
+              avatar: supabaseUser.avatar_url,
+              authType: "google",
+              provider: supabaseUser.provider,
+            };
+            setUser(user);
+            // Remove test user if exists
+            localStorage.removeItem("testUser");
+          }
+        } else if (event === "SIGNED_OUT") {
+          // Only clear if it's a Google user being signed out
+          if (user?.authType === "google") {
+            setUser(null);
+          }
         }
       }
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, [user?.authType]);

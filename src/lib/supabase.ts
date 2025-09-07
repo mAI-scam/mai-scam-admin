@@ -22,18 +22,27 @@ export interface SupabaseUser {
 }
 
 // Helper function to get user data from Supabase session
-export const getSupabaseUser = (session: any): SupabaseUser | null => {
+export const getSupabaseUser = (
+  session: {
+    user?: {
+      email?: string;
+      id: string;
+      user_metadata?: Record<string, unknown>;
+      app_metadata?: Record<string, unknown>;
+    };
+  } | null
+): SupabaseUser | null => {
   if (!session?.user) return null;
 
   return {
     id: session.user.id,
     email: session.user.email || "",
     name:
-      session.user.user_metadata?.full_name ||
-      session.user.user_metadata?.name ||
+      (session.user.user_metadata?.full_name as string) ||
+      (session.user.user_metadata?.name as string) ||
       session.user.email?.split("@")[0] ||
       "User",
-    avatar_url: session.user.user_metadata?.avatar_url,
-    provider: session.user.app_metadata?.provider || "google",
+    avatar_url: session.user.user_metadata?.avatar_url as string | undefined,
+    provider: (session.user.app_metadata?.provider as string) || "google",
   };
 };

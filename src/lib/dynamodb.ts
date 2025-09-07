@@ -1,9 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  ScanCommand,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { DashboardData } from "@/data/dummyDynamoDbData";
 import { processScamData } from "@/lib/scamDataProcessor";
 
@@ -38,8 +34,17 @@ interface DynamoScamDetection {
     recommended_action: string;
     legitimate_url?: string;
   };
-  extracted_data?: any;
-  signals?: any;
+  extracted_data?: {
+    metadata?: {
+      domain?: string;
+    };
+    signals?: {
+      platform_meta?: {
+        platform?: string;
+      };
+    };
+  };
+  signals?: Record<string, unknown>;
   url?: string;
   domain?: string;
   platform?: string;

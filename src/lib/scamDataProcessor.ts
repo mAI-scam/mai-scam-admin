@@ -8,8 +8,35 @@ import {
   DashboardData,
 } from "@/data/dummyDynamoDbData";
 
+// Define a type for raw detection data
+interface RawDetection {
+  "mai-scam": string;
+  detection_id: string;
+  content_type: "website" | "email" | "socialmedia";
+  target_language: string;
+  created_at: string;
+  analysis_result?: {
+    risk_level?: string;
+    analysis?: string;
+    detected_language?: string;
+    recommended_action?: string;
+  };
+  extracted_data?: {
+    metadata?: {
+      domain?: string;
+    };
+    signals?: {
+      platform_meta?: {
+        platform?: string;
+      };
+    };
+  };
+  url?: string;
+  platform?: string;
+}
+
 // Helper function to extract country from analysis or domain
-export const extractCountry = (detection: any): string => {
+export const extractCountry = (detection: RawDetection): string => {
   const analysis = detection.analysis_result?.analysis?.toLowerCase() || "";
   const domain =
     detection.extracted_data?.metadata?.domain || detection.url || "";
@@ -31,7 +58,9 @@ export const extractCountry = (detection: any): string => {
 };
 
 // Transform raw DynamoDB data to ScamDetection format
-export const transformRawDetections = (rawData: any[]): ScamDetection[] => {
+export const transformRawDetections = (
+  rawData: RawDetection[]
+): ScamDetection[] => {
   return rawData.map((detection) => ({
     id: detection["mai-scam"],
     detection_id: detection.detection_id,
@@ -44,13 +73,13 @@ export const transformRawDetections = (rawData: any[]): ScamDetection[] => {
     target_language: detection.target_language,
     detected_language:
       detection.analysis_result?.detected_language || detection.target_language,
-    url: (detection as any).url || detection.extracted_data?.metadata?.domain,
+    url: detection.url || detection.extracted_data?.metadata?.domain,
     domain:
       detection.extracted_data?.metadata?.domain ||
-      (detection as any).url?.split("/")[2],
+      detection.url?.split("/")[2],
     platform:
       detection.extracted_data?.signals?.platform_meta?.platform ||
-      (detection as any).platform,
+      detection.platform,
     analysis: detection.analysis_result?.analysis || "No analysis available",
     recommended_action:
       detection.analysis_result?.recommended_action || "Review manually",
@@ -132,7 +161,14 @@ export const calculateStats = (detections: ScamDetection[]): ScamStats => {
 export const calculateRegionalInsights = (
   detections: ScamDetection[]
 ): RegionalInsight[] => {
-  const countryMap = new Map<string, any>();
+  const countryMap = new Map<
+    string,
+    {
+      detections: number;
+      highRisk: number;
+      scamTypes: Set<string>;
+    }
+  >();
   detections.forEach((detection) => {
     const country = detection.country || "Unknown";
     if (!countryMap.has(country)) {
@@ -143,20 +179,22 @@ export const calculateRegionalInsights = (
       });
     }
     const data = countryMap.get(country);
-    data.detections++;
-    if (
-      detection.risk_level.includes("高") ||
-      detection.risk_level.toLowerCase().includes("high")
-    ) {
-      data.highRisk++;
+    if (data) {
+      data.detections++;
+      if (
+        detection.risk_level.includes("高") ||
+        detection.risk_level.toLowerCase().includes("high")
+      ) {
+        data.highRisk++;
+      }
+      // Add scam type based on content_type
+      if (detection.content_type === "website")
+        data.scamTypes.add("Website Scams");
+      if (detection.content_type === "email")
+        data.scamTypes.add("Email Phishing");
+      if (detection.content_type === "socialmedia")
+        data.scamTypes.add("Social Media Scams");
     }
-    // Add scam type based on content_type
-    if (detection.content_type === "website")
-      data.scamTypes.add("Website Scams");
-    if (detection.content_type === "email")
-      data.scamTypes.add("Email Phishing");
-    if (detection.content_type === "socialmedia")
-      data.scamTypes.add("Social Media Scams");
   });
 
   return Array.from(countryMap.entries())
@@ -265,7 +303,7 @@ export const generateThreatTrends = (
 };
 
 // Main function to process raw DynamoDB data into dashboard format
-export const processScamData = (rawData: any[]): DashboardData => {
+export const processScamData = (rawData: RawDetection[]): DashboardData => {
   const transformedDetections = transformRawDetections(rawData);
   const stats = calculateStats(transformedDetections);
   const regionalInsights = calculateRegionalInsights(transformedDetections);
