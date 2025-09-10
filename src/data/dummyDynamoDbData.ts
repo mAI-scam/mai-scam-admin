@@ -11,6 +11,8 @@ export interface ScamDetection {
   url?: string;
   domain?: string;
   platform?: string;
+  post_url?: string;
+  images?: Array<{ s3_url: string; s3_key: string }>;
   analysis: string;
   recommended_action: string;
   created_at: string;

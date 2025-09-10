@@ -33,6 +33,7 @@ interface DetectionLogProps extends SectionProps {
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
+  onOpenAnalysis?: (detection: any) => void;
 }
 
 const DetectionLog: React.FC<DetectionLogProps> = ({
@@ -49,6 +50,7 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
   setPageInput,
   itemsPerPage,
   getLanguageDisplayName,
+  onOpenAnalysis,
 }) => {
   return (
     <div className="h-full flex flex-col">
@@ -66,6 +68,7 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
         setPageInput={setPageInput}
         itemsPerPage={itemsPerPage}
         getLanguageDisplayName={getLanguageDisplayName}
+        onRowClick={onOpenAnalysis}
       />
     </div>
   );

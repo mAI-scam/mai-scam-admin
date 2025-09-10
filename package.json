@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
+    "@aws-sdk/client-s3": "^3.884.0",
     "@aws-sdk/lib-dynamodb": "^3.883.0",
+    "@aws-sdk/s3-request-presigner": "^3.884.0",
     "@supabase/supabase-js": "^2.57.2",
     "chart.js": "^4.5.0",
     "next": "15.5.2",

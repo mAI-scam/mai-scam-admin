@@ -13,6 +13,9 @@ import Overview from "@/screens/Overview";
 import DetectionLog from "@/screens/DetectionLog";
 import LanguageInsight from "@/screens/LanguageInsight";
 import ThreatAnalysis from "@/screens/ThreatAnalysis";
+import WebsiteAnalysis from "@/screens/WebsiteAnalysis";
+import EmailAnalysis from "@/screens/EmailAnalysis";
+import SocialmediaAnalysis from "@/screens/SocialmediaAnalysis";
 
 interface DashboardProps {
   children?: React.ReactNode;
@@ -27,6 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   );
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedDetection, setSelectedDetection] = useState<any | null>(null);
 
   // Filter states for detections
   const [typeFilters, setTypeFilters] = useState({
@@ -147,6 +151,14 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     loadDashboardData();
   };
 
+  const handleOpenAnalysis = (detection: any) => {
+    setSelectedDetection(detection);
+  };
+
+  const handleCloseAnalysis = () => {
+    setSelectedDetection(null);
+  };
+
   const getSectionTitle = () => {
     switch (activeSection) {
       case "overview":
@@ -188,6 +200,32 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
       isRefreshing,
     };
 
+    // Only show analysis screen when in detections section
+    if (activeSection === "detections" && selectedDetection) {
+      if (selectedDetection.content_type === "website") {
+        return (
+          <WebsiteAnalysis
+            detection={selectedDetection}
+            onBack={handleCloseAnalysis}
+          />
+        );
+      }
+      if (selectedDetection.content_type === "email") {
+        return (
+          <EmailAnalysis
+            detection={selectedDetection}
+            onBack={handleCloseAnalysis}
+          />
+        );
+      }
+      return (
+        <SocialmediaAnalysis
+          detection={selectedDetection}
+          onBack={handleCloseAnalysis}
+        />
+      );
+    }
+
     switch (activeSection) {
       case "overview":
         return (
@@ -213,6 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
             setPageInput={setPageInput}
             itemsPerPage={itemsPerPage}
             getLanguageDisplayName={getLanguageDisplayName}
+            onOpenAnalysis={handleOpenAnalysis}
           />
         );
       case "language":
@@ -292,6 +331,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
               <button
                 key={item.id}
                 onClick={() => {
+                  setSelectedDetection(null);
                   setActiveSection(item.id);
                   setSidebarOpen(false);
                 }}
@@ -353,7 +393,10 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           <div className="flex items-center justify-between h-16 px-6">
             <div className="flex items-center">
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => {
+                  setSelectedDetection(null);
+                  setSidebarOpen(true);
+                }}
                 className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-4"
               >
                 <svg

@@ -27,6 +27,7 @@ interface DetectionTableProps {
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
+  onRowClick?: (detection: any) => void;
 }
 
 const DetectionTable: React.FC<DetectionTableProps> = ({
@@ -43,6 +44,7 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
   setPageInput,
   itemsPerPage,
   getLanguageDisplayName,
+  onRowClick,
 }) => {
   // Sorting states
   const [dateSortOrder, setDateSortOrder] = useState<"asc" | "desc">("desc");
@@ -373,7 +375,8 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                 {currentDetections.map((detection) => (
                   <tr
                     key={detection.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    onClick={() => onRowClick && onRowClick(detection)}
                   >
                     <td className="w-24 px-3 py-2">
                       <div className="flex items-center">

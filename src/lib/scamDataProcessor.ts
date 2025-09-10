@@ -121,6 +121,19 @@ export const transformRawDetections = (
         ) ||
         safeString(detection.platform) ||
         undefined,
+      post_url: safeString((detection as any).post_url) || undefined,
+      images: Array.isArray((detection as any)?.extracted_data?.images)
+        ? ((detection as any).extracted_data.images as any[])
+            .filter((img) => img && (img.s3_url || img.s3Key || img.s3_key))
+            .map((img) => ({
+              s3_url:
+                safeString((img as any).s3_url) ||
+                safeString((img as any).s3Url),
+              s3_key:
+                safeString((img as any).s3_key) ||
+                safeString((img as any).s3Key),
+            }))
+        : undefined,
       analysis:
         safeString(detection.analysis_result?.analysis) ||
         "No analysis available",
