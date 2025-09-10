@@ -8,6 +8,27 @@ import {
   fetchDashboardDataFromAPI,
   isDynamoDBConfigured,
 } from "@/lib/dashboardApi";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from "chart.js";
+import { Bar, Pie } from "react-chartjs-2";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 interface DashboardProps {
   children?: React.ReactNode;
@@ -20,8 +41,10 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<"dummy" | "dynamodb">("dummy");
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const navigation = [
     { name: "Overview", id: "overview", icon: "🛡️" },
@@ -30,67 +53,80 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     { name: "Threat Analysis", id: "threats", icon: "⚠️" },
   ];
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      if (!user) return;
+  const loadDashboardData = async (isRefresh = false) => {
+    if (!user) return;
 
-      setIsLoadingData(true);
+    // If it's not a refresh and we already have data, don't reload
+    if (!isRefresh && hasLoadedData) {
+      return;
+    }
 
-      try {
-        if (user.authType === "test") {
-          // Test user always gets dummy data
-          console.log("Loading dummy data for test user...");
-          const data = await getDummyData();
-          setDashboardData(data);
-          setDataSource("dummy");
-        } else if (user.authType === "google") {
-          // Google user gets DynamoDB data if configured, otherwise dummy data
-          console.log("Loading data for Google user...");
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsInitialLoading(true);
+    }
 
-          const isConfigured = await isDynamoDBConfigured();
-          if (isConfigured) {
-            console.log(
-              "DynamoDB is configured, attempting to fetch real data..."
-            );
-            const dynamoData = await fetchDashboardDataFromAPI();
+    try {
+      if (user.authType === "test") {
+        // Test user always gets dummy data
+        console.log("Loading dummy data for test user...");
+        const data = await getDummyData();
+        setDashboardData(data);
+        setDataSource("dummy");
+      } else if (user.authType === "google") {
+        // Google user gets DynamoDB data if configured, otherwise dummy data
+        console.log("Loading data for Google user...");
 
-            if (dynamoData) {
-              setDashboardData(dynamoData);
-              setDataSource("dynamodb");
-              console.log("Successfully loaded DynamoDB data");
-            } else {
-              console.log("No DynamoDB data found, falling back to dummy data");
-              const data = await getDummyData();
-              setDashboardData(data);
-              setDataSource("dummy");
-            }
+        const isConfigured = await isDynamoDBConfigured();
+        if (isConfigured) {
+          console.log(
+            "DynamoDB is configured, attempting to fetch real data..."
+          );
+          const dynamoData = await fetchDashboardDataFromAPI();
+
+          if (dynamoData) {
+            setDashboardData(dynamoData);
+            setDataSource("dynamodb");
+            console.log("Successfully loaded DynamoDB data");
           } else {
-            console.log("DynamoDB not configured, using dummy data");
-            console.log(
-              "To use real data, please set up these environment variables on the server:"
-            );
-            console.log("- AWS_REGION");
-            console.log("- AWS_ACCESS_KEY_ID");
-            console.log("- AWS_SECRET_ACCESS_KEY");
-            console.log(
-              "- DYNAMODB_SCAM_TABLE (optional, defaults to 'mai-scam-detection-results')"
-            );
+            console.log("No DynamoDB data found, falling back to dummy data");
             const data = await getDummyData();
             setDashboardData(data);
             setDataSource("dummy");
           }
+        } else {
+          console.log("DynamoDB not configured, using dummy data");
+          console.log(
+            "To use real data, please set up these environment variables on the server:"
+          );
+          console.log("- AWS_REGION");
+          console.log("- AWS_ACCESS_KEY_ID");
+          console.log("- AWS_SECRET_ACCESS_KEY");
+          console.log(
+            "- DYNAMODB_SCAM_TABLE (optional, defaults to 'mai-scam-detection-results')"
+          );
+          const data = await getDummyData();
+          setDashboardData(data);
+          setDataSource("dummy");
         }
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-        // Fallback to dummy data on any error
-        const data = await getDummyData();
-        setDashboardData(data);
-        setDataSource("dummy");
-      } finally {
-        setIsLoadingData(false);
       }
-    };
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      // Fallback to dummy data on any error
+      const data = await getDummyData();
+      setDashboardData(data);
+      setDataSource("dummy");
+    } finally {
+      setIsInitialLoading(false);
+      setIsRefreshing(false);
+      setHasLoadedData(true);
+    }
+  };
 
+  useEffect(() => {
+    // Reset the loaded data flag when user changes
+    setHasLoadedData(false);
     loadDashboardData();
   }, [user]);
 
@@ -101,13 +137,19 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   const getDataSourceBadge = () => {
     if (dataSource === "dynamodb") {
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+        <span
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+          style={{ backgroundColor: "#49A4EF" }}
+        >
           🔴 Live Data
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+      <span
+        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+        style={{ backgroundColor: "#EB6700" }}
+      >
         🧪 Test Data
       </span>
     );
@@ -164,7 +206,8 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   };
 
   const renderContent = () => {
-    if (isLoadingData || !dashboardData) {
+    // Only show full loading screen on initial load when we have no data
+    if (isInitialLoading && !dashboardData) {
       return (
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
@@ -182,10 +225,25 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
       );
     }
 
+    // If we don't have data yet, show loading
+    if (!dashboardData) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">
+              Loading dashboard data...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const sectionProps = {
       data: dashboardData,
       dataSource,
       authType: user?.authType || "test",
+      isRefreshing,
     };
 
     switch (activeSection) {
@@ -220,10 +278,23 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
       >
-        <div className="flex items-center justify-center h-16 bg-red-600">
-          <h1 className="text-white text-xl font-bold">
-            🛡️ Mai Scam Detection
-          </h1>
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 h-16">
+          <div className="flex items-center px-4 h-full">
+            <div className="flex items-center space-x-3">
+              <Image
+                src="/logo.png"
+                alt="mAIscam Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8"
+              />
+              <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
+                <span style={{ color: "#49A4EF" }}>m</span>
+                <span style={{ color: "#EB6700" }}>AI</span>
+                <span style={{ color: "#49A4EF" }}>scam</span>
+              </h1>
+            </div>
+          </div>
         </div>
 
         <nav className="mt-8">
@@ -237,9 +308,14 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
                 }}
                 className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                   activeSection === item.id
-                    ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300"
+                    ? "text-white"
                     : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
+                style={
+                  activeSection === item.id
+                    ? { backgroundColor: "#EB6700" }
+                    : {}
+                }
               >
                 <span className="mr-3 text-lg">{item.icon}</span>
                 {item.name}
@@ -277,7 +353,8 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+            className="w-full text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+            style={{ backgroundColor: "#EB6700" }}
           >
             🚪 Sign out
           </button>
@@ -287,8 +364,8 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-4 py-4">
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 h-16">
+          <div className="flex items-center justify-between px-4 h-full">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -316,6 +393,27 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => loadDashboardData(true)}
+                disabled={isRefreshing}
+                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{ color: "#49A4EF" }}
+                title="Refresh data"
+              >
+                <svg
+                  className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
               {getDataSourceBadge()}
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 Welcome back, {user?.name}
@@ -325,7 +423,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-hidden p-6">
           {renderConfigurationBanner()}
           {children || renderContent()}
         </main>
@@ -339,213 +437,287 @@ interface SectionProps {
   data: DashboardData;
   dataSource: "dummy" | "dynamodb";
   authType: "test" | "google";
+  isRefreshing?: boolean;
 }
 
 // Overview Section - Scam Detection Dashboard
-const OverviewSection: React.FC<SectionProps> = ({ data, dataSource }) => {
+const OverviewSection: React.FC<SectionProps> = ({
+  data,
+  dataSource,
+  isRefreshing,
+}) => {
   // First row stats
   const mainStats = [
     {
       name: "Total Detections",
       value: data.stats.totalDetections.toLocaleString(),
       icon: "🛡️",
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-900/20",
-    },
-    {
-      name: "High Risk Threats",
-      value: data.stats.highRiskDetections.toLocaleString(),
-      icon: "⚠️",
-      color: "text-red-600",
-      bgColor: "bg-red-50 dark:bg-red-900/20",
+      color: "#49A4EF",
+      bgColor: "rgba(73, 164, 239, 0.1)",
+      additionalInfo: `${data.stats.highRiskDetections.toLocaleString()} high risk`,
     },
     {
       name: "Website Scams",
       value: data.stats.websiteScams.toLocaleString(),
       icon: "🌐",
-      color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-900/20",
+      color: "#49A4EF",
+      bgColor: "rgba(73, 164, 239, 0.1)",
     },
     {
       name: "Email Phishing",
       value: data.stats.emailScams.toLocaleString(),
       icon: "📧",
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
+      color: "#EB6700",
+      bgColor: "rgba(235, 103, 0, 0.1)",
     },
     {
       name: "Social Media X",
       value: data.stats.socialMediaScams.toLocaleString(),
       icon: "📱",
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+      color: "#EB6700",
+      bgColor: "rgba(235, 103, 0, 0.1)",
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Dashboard Overview
-        </h3>
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            dataSource === "dynamodb"
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-          }`}
-        >
-          {dataSource === "dynamodb" ? "🔴 Live Data" : "🧪 Test Data"}
-        </span>
-      </div>
+    <div className="h-full flex flex-col">
+      {isRefreshing && (
+        <div className="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-gray-400 mb-4">
+          <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400"></div>
+          <span>Refreshing...</span>
+        </div>
+      )}
 
       {/* First Row - Main Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {mainStats.map((stat) => (
           <div
             key={stat.name}
-            className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {stat.name}
                 </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stat.value}
                 </p>
+                {stat.additionalInfo && (
+                  <p
+                    className="text-xs font-medium mt-1"
+                    style={{ color: "#EB6700" }}
+                  >
+                    ⚠️ {stat.additionalInfo}
+                  </p>
+                )}
               </div>
-              <div className={`text-2xl p-3 rounded-full ${stat.bgColor}`}>
-                <span className={stat.color}>{stat.icon}</span>
+              <div
+                className="text-xl p-2 rounded-full"
+                style={{ backgroundColor: stat.bgColor }}
+              >
+                <span style={{ color: stat.color }}>{stat.icon}</span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Second Row - Detailed Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
         {/* Risk Distribution */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Risk Distribution
-            </h3>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                dataSource === "dynamodb"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              }`}
-            >
-              {dataSource === "dynamodb" ? "🔴 Live" : "🧪 Test"}
-            </span>
-          </div>
-          <div className="space-y-4">
-            {data.stats.riskDistribution.map((risk) => (
-              <div
-                key={risk.risk}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <div
-                    className={`w-3 h-3 rounded-full mr-3 ${
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Risk Distribution
+          </h3>
+          <div className="flex-1 h-48">
+            {(() => {
+              // Order risks: Low -> Medium -> High
+              const orderedRisks = [
+                data.stats.riskDistribution.find((r) =>
+                  r.risk.toLowerCase().includes("low")
+                ) || data.stats.riskDistribution[0],
+                data.stats.riskDistribution.find((r) =>
+                  r.risk.toLowerCase().includes("medium")
+                ) || data.stats.riskDistribution[1],
+                data.stats.riskDistribution.find(
+                  (r) =>
+                    r.risk.toLowerCase().includes("high") ||
+                    r.risk.toLowerCase().includes("critical")
+                ) || data.stats.riskDistribution[2],
+              ].filter(Boolean);
+
+              const chartData = {
+                labels: orderedRisks.map((risk) => risk.risk),
+                datasets: [
+                  {
+                    label: "Count",
+                    data: orderedRisks.map((risk) => risk.count),
+                    backgroundColor: orderedRisks.map((risk) =>
                       risk.risk.toLowerCase().includes("high") ||
                       risk.risk.toLowerCase().includes("critical")
-                        ? "bg-red-500"
+                        ? "#DC2626"
                         : risk.risk.toLowerCase().includes("medium")
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }`}
-                  ></div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {risk.risk}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
-                    {risk.count.toLocaleString()}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                    ({risk.percentage}%)
-                  </span>
-                </div>
-              </div>
-            ))}
+                        ? "#F59E0B"
+                        : "#059669"
+                    ),
+                    borderColor: orderedRisks.map((risk) =>
+                      risk.risk.toLowerCase().includes("high") ||
+                      risk.risk.toLowerCase().includes("critical")
+                        ? "#DC2626"
+                        : risk.risk.toLowerCase().includes("medium")
+                        ? "#F59E0B"
+                        : "#059669"
+                    ),
+                    borderWidth: 0,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                  },
+                ],
+              };
+
+              const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                  tooltip: {
+                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                    titleColor: "white",
+                    bodyColor: "white",
+                    borderColor: "rgba(255, 255, 255, 0.1)",
+                    borderWidth: 1,
+                    callbacks: {
+                      label: function (context: any) {
+                        const risk = orderedRisks[context.dataIndex];
+                        return `${risk.risk}: ${risk.count} (${risk.percentage}%)`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    grid: {
+                      color: "rgba(0, 0, 0, 0.1)",
+                    },
+                    ticks: {
+                      color: "#6B7280",
+                      font: {
+                        size: 11,
+                      },
+                    },
+                  },
+                  x: {
+                    grid: {
+                      display: false,
+                    },
+                    ticks: {
+                      color: "#6B7280",
+                      font: {
+                        size: 11,
+                      },
+                    },
+                  },
+                },
+                interaction: {
+                  intersect: false,
+                  mode: "index" as const,
+                },
+              };
+
+              return <Bar data={chartData} options={options} />;
+            })()}
           </div>
         </div>
 
         {/* Detected Languages */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Southeast Asia Language Overview
           </h3>
-          <div className="space-y-3">
-            {data.languageInsights.slice(0, 6).map((language) => (
-              <div
-                key={language.languageCode}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-              >
-                <div className="flex items-center">
-                  <div className="text-lg mr-3">🌐</div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {language.language}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {language.detections.toLocaleString()} detections
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-red-600 dark:text-red-400">
-                    {language.highRisk} high risk
-                  </div>
-                  <div
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      language.trend === "up"
-                        ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                        : language.trend === "down"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                    }`}
-                  >
-                    {language.trend === "up"
-                      ? "📈"
-                      : language.trend === "down"
-                      ? "📉"
-                      : "➡️"}{" "}
-                    {language.trendPercentage}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+          <div className="flex-1 h-48">
+            {(() => {
+              const topLanguages = data.languageInsights.slice(0, 6);
+              const totalDetections = topLanguages.reduce(
+                (sum, lang) => sum + lang.detections,
+                0
+              );
 
-      {/* Southeast Asia Map Overview */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Southeast Asia Scam Overview
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {data.languageInsights.slice(0, 6).map((language) => (
-            <div
-              key={language.languageCode}
-              className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-            >
-              <div className="text-3xl mb-2">🌐</div>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                {language.language}
-              </h4>
-              <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                {language.detections.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {language.highRisk} high risk
-              </p>
-            </div>
-          ))}
+              // Generate colors for each language
+              const colors = [
+                "#49A4EF", // Blue
+                "#EB6700", // Orange
+                "#059669", // Green
+                "#7C3AED", // Purple
+                "#DC2626", // Red
+                "#F59E0B", // Yellow
+              ];
+
+              const chartData = {
+                labels: topLanguages.map((lang) => lang.language),
+                datasets: [
+                  {
+                    data: topLanguages.map((lang) => lang.detections),
+                    backgroundColor: colors.slice(0, topLanguages.length),
+                    borderColor: colors
+                      .slice(0, topLanguages.length)
+                      .map((color) => color),
+                    borderWidth: 2,
+                    hoverOffset: 4,
+                  },
+                ],
+              };
+
+              const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "bottom" as const,
+                    labels: {
+                      usePointStyle: true,
+                      padding: 15,
+                      font: {
+                        size: 11,
+                      },
+                      color: "#374151",
+                    },
+                  },
+                  tooltip: {
+                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                    titleColor: "white",
+                    bodyColor: "white",
+                    borderColor: "rgba(255, 255, 255, 0.1)",
+                    borderWidth: 1,
+                    callbacks: {
+                      label: function (context: any) {
+                        const language = topLanguages[context.dataIndex];
+                        const percentage = (
+                          (language.detections / totalDetections) *
+                          100
+                        ).toFixed(1);
+                        return `${
+                          language.language
+                        }: ${language.detections.toLocaleString()} detections (${percentage}%)`;
+                      },
+                      afterLabel: function (context: any) {
+                        const language = topLanguages[context.dataIndex];
+                        return `High Risk: ${language.highRisk}`;
+                      },
+                    },
+                  },
+                },
+                interaction: {
+                  intersect: false,
+                },
+              };
+
+              return <Pie data={chartData} options={options} />;
+            })()}
+          </div>
         </div>
       </div>
     </div>
