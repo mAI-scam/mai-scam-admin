@@ -110,7 +110,7 @@ const Overview: React.FC<OverviewProps> = ({
         {mainStats.map((stat) => (
           <div
             key={stat.name}
-            className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => {
               if (stat.name === "Total Detections") {
                 navigateToDetectionsWithFilter();
@@ -125,10 +125,10 @@ const Overview: React.FC<OverviewProps> = ({
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {stat.name}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stat.value}
                 </p>
                 {stat.additionalInfo && (
@@ -154,8 +154,8 @@ const Overview: React.FC<OverviewProps> = ({
       {/* Second Row - Detailed Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
         {/* Risk Distribution */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Risk Distribution
           </h3>
           <div className="flex-1 h-48">
@@ -278,8 +278,8 @@ const Overview: React.FC<OverviewProps> = ({
         </div>
 
         {/* Detected Languages */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Southeast Asia Language Overview
           </h3>
           <div className="flex-1 h-48">
