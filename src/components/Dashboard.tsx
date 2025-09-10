@@ -19,6 +19,7 @@ import {
   ArcElement,
   ChartEvent,
   ActiveElement,
+  TooltipItem,
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 
@@ -720,7 +721,7 @@ const OverviewSection: React.FC<
                     borderColor: "rgba(255, 255, 255, 0.1)",
                     borderWidth: 1,
                     callbacks: {
-                      label: function (context: any) {
+                      label: function (context: TooltipItem<"bar">) {
                         const risk = orderedRisks[context.dataIndex];
                         return `${risk.risk}: ${risk.count} (${risk.percentage}%)`;
                       },
@@ -836,7 +837,7 @@ const OverviewSection: React.FC<
                     borderColor: "rgba(255, 255, 255, 0.1)",
                     borderWidth: 1,
                     callbacks: {
-                      label: function (context: any) {
+                      label: function (context: TooltipItem<"pie">) {
                         const language = topLanguages[context.dataIndex];
                         const percentage = (
                           (language.detections / totalDetections) *
@@ -846,7 +847,7 @@ const OverviewSection: React.FC<
                           language.language
                         }: ${language.detections.toLocaleString()} detections (${percentage}%)`;
                       },
-                      afterLabel: function (context: any) {
+                      afterLabel: function (context: TooltipItem<"pie">) {
                         const language = topLanguages[context.dataIndex];
                         return `High Risk: ${language.highRisk}`;
                       },
