@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import SignIn from "@/components/SignIn";
+import SignIn from "@/screens/Signin";
 import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
