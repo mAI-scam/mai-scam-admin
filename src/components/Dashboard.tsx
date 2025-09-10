@@ -17,6 +17,8 @@ import {
   Tooltip,
   Legend,
   ArcElement,
+  ChartEvent,
+  ActiveElement,
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 
@@ -75,82 +77,85 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     { name: "Threat Analysis", id: "threats", icon: "⚠️" },
   ];
 
-  const loadDashboardData = async (isRefresh = false) => {
-    if (!user) return;
+  const loadDashboardData = React.useCallback(
+    async (isRefresh = false) => {
+      if (!user) return;
 
-    // If it's not a refresh and we already have data, don't reload
-    if (!isRefresh && hasLoadedData) {
-      return;
-    }
+      // If it's not a refresh and we already have data, don't reload
+      if (!isRefresh && hasLoadedData) {
+        return;
+      }
 
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsInitialLoading(true);
-    }
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsInitialLoading(true);
+      }
 
-    try {
-      if (user.authType === "test") {
-        // Test user always gets dummy data
-        console.log("Loading dummy data for test user...");
-        const data = await getDummyData();
-        setDashboardData(data);
-        setDataSource("dummy");
-      } else if (user.authType === "google") {
-        // Google user gets DynamoDB data if configured, otherwise dummy data
-        console.log("Loading data for Google user...");
+      try {
+        if (user.authType === "test") {
+          // Test user always gets dummy data
+          console.log("Loading dummy data for test user...");
+          const data = await getDummyData();
+          setDashboardData(data);
+          setDataSource("dummy");
+        } else if (user.authType === "google") {
+          // Google user gets DynamoDB data if configured, otherwise dummy data
+          console.log("Loading data for Google user...");
 
-        const isConfigured = await isDynamoDBConfigured();
-        if (isConfigured) {
-          console.log(
-            "DynamoDB is configured, attempting to fetch real data..."
-          );
-          const dynamoData = await fetchDashboardDataFromAPI();
+          const isConfigured = await isDynamoDBConfigured();
+          if (isConfigured) {
+            console.log(
+              "DynamoDB is configured, attempting to fetch real data..."
+            );
+            const dynamoData = await fetchDashboardDataFromAPI();
 
-          if (dynamoData) {
-            setDashboardData(dynamoData);
-            setDataSource("dynamodb");
-            console.log("Successfully loaded DynamoDB data");
+            if (dynamoData) {
+              setDashboardData(dynamoData);
+              setDataSource("dynamodb");
+              console.log("Successfully loaded DynamoDB data");
+            } else {
+              console.log("No DynamoDB data found, falling back to dummy data");
+              const data = await getDummyData();
+              setDashboardData(data);
+              setDataSource("dummy");
+            }
           } else {
-            console.log("No DynamoDB data found, falling back to dummy data");
+            console.log("DynamoDB not configured, using dummy data");
+            console.log(
+              "To use real data, please set up these environment variables on the server:"
+            );
+            console.log("- AWS_REGION");
+            console.log("- AWS_ACCESS_KEY_ID");
+            console.log("- AWS_SECRET_ACCESS_KEY");
+            console.log(
+              "- DYNAMODB_SCAM_TABLE (optional, defaults to 'mai-scam-detection-results')"
+            );
             const data = await getDummyData();
             setDashboardData(data);
             setDataSource("dummy");
           }
-        } else {
-          console.log("DynamoDB not configured, using dummy data");
-          console.log(
-            "To use real data, please set up these environment variables on the server:"
-          );
-          console.log("- AWS_REGION");
-          console.log("- AWS_ACCESS_KEY_ID");
-          console.log("- AWS_SECRET_ACCESS_KEY");
-          console.log(
-            "- DYNAMODB_SCAM_TABLE (optional, defaults to 'mai-scam-detection-results')"
-          );
-          const data = await getDummyData();
-          setDashboardData(data);
-          setDataSource("dummy");
         }
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        // Fallback to dummy data on any error
+        const data = await getDummyData();
+        setDashboardData(data);
+        setDataSource("dummy");
+      } finally {
+        setIsInitialLoading(false);
+        setIsRefreshing(false);
+        setHasLoadedData(true);
       }
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      // Fallback to dummy data on any error
-      const data = await getDummyData();
-      setDashboardData(data);
-      setDataSource("dummy");
-    } finally {
-      setIsInitialLoading(false);
-      setIsRefreshing(false);
-      setHasLoadedData(true);
-    }
-  };
+    },
+    [user, hasLoadedData]
+  );
 
   useEffect(() => {
     // Reset the loaded data flag when user changes
     setHasLoadedData(false);
     loadDashboardData();
-  }, [user]);
+  }, [user, loadDashboardData]);
 
   const handleLogout = async () => {
     await logout();
@@ -543,7 +548,7 @@ const OverviewSection: React.FC<
       languageFilter?: string
     ) => void;
   }
-> = ({ data, dataSource, isRefreshing, navigateToDetectionsWithFilter }) => {
+> = ({ data, isRefreshing, navigateToDetectionsWithFilter }) => {
   // First row stats
   const mainStats = [
     {
@@ -688,7 +693,7 @@ const OverviewSection: React.FC<
               const options = {
                 responsive: true,
                 maintainAspectRatio: false,
-                onClick: (event: any, elements: any) => {
+                onClick: (event: ChartEvent, elements: ActiveElement[]) => {
                   if (elements.length > 0) {
                     const elementIndex = elements[0].index;
                     const risk = orderedRisks[elementIndex];
@@ -799,7 +804,7 @@ const OverviewSection: React.FC<
               const options = {
                 responsive: true,
                 maintainAspectRatio: false,
-                onClick: (event: any, elements: any) => {
+                onClick: (event: ChartEvent, elements: ActiveElement[]) => {
                   if (elements.length > 0) {
                     const elementIndex = elements[0].index;
                     const language = topLanguages[elementIndex];
@@ -889,7 +894,6 @@ const DetectionsSection: React.FC<
   }
 > = ({
   data,
-  dataSource,
   typeFilters,
   setTypeFilters,
   riskFilters,
@@ -955,14 +959,9 @@ const DetectionsSection: React.FC<
     }
   };
 
-  const getRiskLevelValue = (riskLevel: string) => {
-    const level = getRiskLevel(riskLevel);
-    return level === "high" ? 3 : level === "medium" ? 2 : 1;
-  };
-
   // Filter and sort data
   const filteredAndSortedDetections = React.useMemo(() => {
-    let filtered = data.recentDetections.filter((detection) => {
+    const filtered = data.recentDetections.filter((detection) => {
       // Type filter
       const typeMatch =
         typeFilters[detection.content_type as keyof typeof typeFilters];
@@ -1505,7 +1504,8 @@ const DetectionsSection: React.FC<
                         {getFilteredLanguages().length === 0 &&
                           languageSearchTerm && (
                             <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                              No languages found matching "{languageSearchTerm}"
+                              No languages found matching &quot;
+                              {languageSearchTerm}&quot;
                             </div>
                           )}
                       </div>
