@@ -43,12 +43,34 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   );
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Filter states for detections
+  const [typeFilters, setTypeFilters] = useState({
+    website: true,
+    email: true,
+    socialmedia: true,
+  });
+  const [riskFilters, setRiskFilters] = useState({
+    high: true,
+    medium: true,
+    low: true,
+  });
+  const [languageFilters, setLanguageFilters] = useState({
+    zh: true,
+    ms: true,
+    en: true,
+  });
+
+  // Pagination states for detections
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
+  const [itemsPerPage] = useState(10);
   const [dataSource, setDataSource] = useState<"dummy" | "dynamodb">("dummy");
   const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const navigation = [
     { name: "Overview", id: "overview", icon: "🛡️" },
-    { name: "Detections", id: "detections", icon: "🔍" },
+    { name: "Detection Log", id: "detections", icon: "🔍" },
     { name: "Language Insights", id: "language", icon: "🌐" },
     { name: "Threat Analysis", id: "threats", icon: "⚠️" },
   ];
@@ -205,6 +227,50 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     return null;
   };
 
+  const navigateToDetectionsWithFilter = (
+    typeFilter?: string,
+    riskFilter?: string,
+    languageFilter?: string
+  ) => {
+    // Set active section to detections
+    setActiveSection("detections");
+
+    // Reset filters to default "all selected" state
+    setTypeFilters({ website: true, email: true, socialmedia: true });
+    setRiskFilters({ high: true, medium: true, low: true });
+    setLanguageFilters({ zh: true, ms: true, en: true });
+
+    // Apply specific filters if provided
+    if (typeFilter) {
+      // Set only the specified type to true, others to false
+      setTypeFilters({
+        website: typeFilter === "website",
+        email: typeFilter === "email",
+        socialmedia: typeFilter === "socialmedia",
+      });
+    }
+    if (riskFilter) {
+      // Set only the specified risk to true, others to false
+      setRiskFilters({
+        high: riskFilter === "high",
+        medium: riskFilter === "medium",
+        low: riskFilter === "low",
+      });
+    }
+    if (languageFilter) {
+      // Set only the specified language to true, others to false
+      setLanguageFilters({
+        zh: languageFilter === "zh",
+        ms: languageFilter === "ms",
+        en: languageFilter === "en",
+      });
+    }
+
+    // Reset pagination
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
   const renderContent = () => {
     // Only show full loading screen on initial load when we have no data
     if (isInitialLoading && !dashboardData) {
@@ -248,15 +314,40 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
 
     switch (activeSection) {
       case "overview":
-        return <OverviewSection {...sectionProps} />;
+        return (
+          <OverviewSection
+            {...sectionProps}
+            navigateToDetectionsWithFilter={navigateToDetectionsWithFilter}
+          />
+        );
       case "detections":
-        return <DetectionsSection {...sectionProps} />;
+        return (
+          <DetectionsSection
+            {...sectionProps}
+            typeFilters={typeFilters}
+            setTypeFilters={setTypeFilters}
+            riskFilters={riskFilters}
+            setRiskFilters={setRiskFilters}
+            languageFilters={languageFilters}
+            setLanguageFilters={setLanguageFilters}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            pageInput={pageInput}
+            setPageInput={setPageInput}
+            itemsPerPage={itemsPerPage}
+          />
+        );
       case "language":
         return <LanguageInsightsSection {...sectionProps} />;
       case "threats":
         return <ThreatAnalysisSection {...sectionProps} />;
       default:
-        return <OverviewSection {...sectionProps} />;
+        return (
+          <OverviewSection
+            {...sectionProps}
+            navigateToDetectionsWithFilter={navigateToDetectionsWithFilter}
+          />
+        );
     }
   };
 
@@ -387,8 +478,11 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
                 </svg>
               </button>
 
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white capitalize">
-                {activeSection}
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {activeSection === "detections"
+                  ? "Detection Log"
+                  : activeSection.charAt(0).toUpperCase() +
+                    activeSection.slice(1)}
               </h2>
             </div>
 
@@ -441,11 +535,15 @@ interface SectionProps {
 }
 
 // Overview Section - Scam Detection Dashboard
-const OverviewSection: React.FC<SectionProps> = ({
-  data,
-  dataSource,
-  isRefreshing,
-}) => {
+const OverviewSection: React.FC<
+  SectionProps & {
+    navigateToDetectionsWithFilter: (
+      typeFilter?: string,
+      riskFilter?: string,
+      languageFilter?: string
+    ) => void;
+  }
+> = ({ data, dataSource, isRefreshing, navigateToDetectionsWithFilter }) => {
   // First row stats
   const mainStats = [
     {
@@ -493,7 +591,18 @@ const OverviewSection: React.FC<SectionProps> = ({
         {mainStats.map((stat) => (
           <div
             key={stat.name}
-            className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => {
+              if (stat.name === "Total Detections") {
+                navigateToDetectionsWithFilter();
+              } else if (stat.name === "Website Scams") {
+                navigateToDetectionsWithFilter("website");
+              } else if (stat.name === "Email Phishing") {
+                navigateToDetectionsWithFilter("email");
+              } else if (stat.name === "Social Media X") {
+                navigateToDetectionsWithFilter("socialmedia");
+              }
+            }}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -579,6 +688,22 @@ const OverviewSection: React.FC<SectionProps> = ({
               const options = {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: (event: any, elements: any) => {
+                  if (elements.length > 0) {
+                    const elementIndex = elements[0].index;
+                    const risk = orderedRisks[elementIndex];
+                    if (risk) {
+                      const riskLevel =
+                        risk.risk.toLowerCase().includes("high") ||
+                        risk.risk.toLowerCase().includes("critical")
+                          ? "high"
+                          : risk.risk.toLowerCase().includes("medium")
+                          ? "medium"
+                          : "low";
+                      navigateToDetectionsWithFilter(undefined, riskLevel);
+                    }
+                  }
+                },
                 plugins: {
                   legend: {
                     display: false,
@@ -674,6 +799,19 @@ const OverviewSection: React.FC<SectionProps> = ({
               const options = {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: (event: any, elements: any) => {
+                  if (elements.length > 0) {
+                    const elementIndex = elements[0].index;
+                    const language = topLanguages[elementIndex];
+                    if (language) {
+                      navigateToDetectionsWithFilter(
+                        undefined,
+                        undefined,
+                        language.languageCode
+                      );
+                    }
+                  }
+                },
                 plugins: {
                   legend: {
                     position: "bottom" as const,
@@ -724,8 +862,60 @@ const OverviewSection: React.FC<SectionProps> = ({
   );
 };
 
-// Detections Section - Recent Scam Detections
-const DetectionsSection: React.FC<SectionProps> = ({ data, dataSource }) => {
+// Detection Log Section
+const DetectionsSection: React.FC<
+  SectionProps & {
+    typeFilters: { website: boolean; email: boolean; socialmedia: boolean };
+    setTypeFilters: React.Dispatch<
+      React.SetStateAction<{
+        website: boolean;
+        email: boolean;
+        socialmedia: boolean;
+      }>
+    >;
+    riskFilters: { high: boolean; medium: boolean; low: boolean };
+    setRiskFilters: React.Dispatch<
+      React.SetStateAction<{ high: boolean; medium: boolean; low: boolean }>
+    >;
+    languageFilters: { zh: boolean; ms: boolean; en: boolean };
+    setLanguageFilters: React.Dispatch<
+      React.SetStateAction<{ zh: boolean; ms: boolean; en: boolean }>
+    >;
+    currentPage: number;
+    setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+    pageInput: string;
+    setPageInput: React.Dispatch<React.SetStateAction<string>>;
+    itemsPerPage: number;
+  }
+> = ({
+  data,
+  dataSource,
+  typeFilters,
+  setTypeFilters,
+  riskFilters,
+  setRiskFilters,
+  languageFilters,
+  setLanguageFilters,
+  currentPage,
+  setCurrentPage,
+  pageInput,
+  setPageInput,
+  itemsPerPage,
+}) => {
+  // Sorting states
+  const [dateSortOrder, setDateSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Filter popup states
+  const [openFilterPopup, setOpenFilterPopup] = useState<
+    "type" | "risk" | "language" | null
+  >(null);
+  const [languageSearchTerm, setLanguageSearchTerm] = useState("");
+  const [filterButtonRefs, setFilterButtonRefs] = useState<{
+    [key: string]: HTMLButtonElement | null;
+  }>({});
+
+  // Initialize language filters
+
   const getRiskLevelColor = (riskLevel: string) => {
     if (
       riskLevel.toLowerCase().includes("high") ||
@@ -752,95 +942,631 @@ const DetectionsSection: React.FC<SectionProps> = ({ data, dataSource }) => {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Recent Scam Detections
-          </h3>
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              dataSource === "dynamodb"
-                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-            }`}
-          >
-            {dataSource === "dynamodb" ? "🔴 Live Data" : "🧪 Test Data"}
-          </span>
-        </div>
-      </div>
+  const getRiskLevel = (riskLevel: string) => {
+    if (
+      riskLevel.toLowerCase().includes("high") ||
+      riskLevel.toLowerCase().includes("critical")
+    ) {
+      return "high";
+    } else if (riskLevel.toLowerCase().includes("medium")) {
+      return "medium";
+    } else {
+      return "low";
+    }
+  };
 
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Risk Level
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Target/Domain
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Country
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Language
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Detected
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {data.recentDetections.slice(0, 15).map((detection) => (
-                <tr
-                  key={detection.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span className="text-lg mr-2">
-                        {getContentTypeIcon(detection.content_type)}
-                      </span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                        {detection.content_type}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRiskLevelColor(
-                        detection.risk_level
-                      )}`}
+  const getRiskLevelValue = (riskLevel: string) => {
+    const level = getRiskLevel(riskLevel);
+    return level === "high" ? 3 : level === "medium" ? 2 : 1;
+  };
+
+  // Filter and sort data
+  const filteredAndSortedDetections = React.useMemo(() => {
+    let filtered = data.recentDetections.filter((detection) => {
+      // Type filter
+      const typeMatch =
+        typeFilters[detection.content_type as keyof typeof typeFilters];
+      if (!typeMatch) return false;
+
+      // Risk level filter
+      const riskLevel = getRiskLevel(detection.risk_level);
+      const riskMatch = riskFilters[riskLevel as keyof typeof riskFilters];
+      if (!riskMatch) return false;
+
+      // Language filter
+      const languageMatch =
+        languageFilters[
+          detection.detected_language as keyof typeof languageFilters
+        ];
+      if (!languageMatch) return false;
+
+      return true;
+    });
+
+    // Sort by date only
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateSortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [
+    data.recentDetections,
+    typeFilters,
+    riskFilters,
+    languageFilters,
+    dateSortOrder,
+  ]);
+
+  const totalPages = Math.ceil(
+    filteredAndSortedDetections.length / itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      setPageInput(page.toString());
+    }
+  };
+
+  const handlePageInputChange = (value: string) => {
+    setPageInput(value);
+  };
+
+  const handlePageInputSubmit = () => {
+    const page = parseInt(pageInput);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    } else {
+      setPageInput(currentPage.toString());
+    }
+  };
+
+  const handleTypeFilterChange = (type: keyof typeof typeFilters) => {
+    setTypeFilters((prev) => ({ ...prev, [type]: !prev[type] }));
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const handleRiskFilterChange = (risk: keyof typeof riskFilters) => {
+    setRiskFilters((prev) => ({ ...prev, [risk]: !prev[risk] }));
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const handleLanguageFilterChange = (language: string) => {
+    setLanguageFilters((prev) => ({
+      ...prev,
+      [language]: !prev[language as keyof typeof prev],
+    }));
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const handleDateSort = () => {
+    setDateSortOrder(dateSortOrder === "desc" ? "asc" : "desc");
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const getDateSortIcon = () => {
+    return dateSortOrder === "desc" ? (
+      <svg
+        className="w-3 h-3 text-blue-600 dark:text-blue-400"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path d="M5 8l5 5 5-5H5z" />
+      </svg>
+    ) : (
+      <svg
+        className="w-3 h-3 text-blue-600 dark:text-blue-400"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path d="M5 12l5-5 5 5H5z" />
+      </svg>
+    );
+  };
+
+  const toggleFilterPopup = (filterType: "type" | "risk" | "language") => {
+    setOpenFilterPopup(openFilterPopup === filterType ? null : filterType);
+    if (filterType === "language") {
+      setLanguageSearchTerm(""); // Reset search when opening language filter
+    }
+  };
+
+  const getFilteredLanguages = () => {
+    const languageMap = {
+      zh: "Chinese",
+      ms: "Malay (Bahasa)",
+      en: "English",
+    };
+    const languages = Object.keys(languageFilters);
+    if (!languageSearchTerm) return languages;
+    return languages.filter((lang) =>
+      languageMap[lang as keyof typeof languageMap]
+        .toLowerCase()
+        .includes(languageSearchTerm.toLowerCase())
+    );
+  };
+
+  // Memoized ref callbacks to prevent infinite loops
+  const setTypeRef = React.useCallback((el: HTMLButtonElement | null) => {
+    setFilterButtonRefs((prev) => ({ ...prev, type: el }));
+  }, []);
+
+  const setRiskRef = React.useCallback((el: HTMLButtonElement | null) => {
+    setFilterButtonRefs((prev) => ({ ...prev, risk: el }));
+  }, []);
+
+  const setLanguageRef = React.useCallback((el: HTMLButtonElement | null) => {
+    setFilterButtonRefs((prev) => ({ ...prev, language: el }));
+  }, []);
+
+  // Select All / Clear All logic
+  const handleSelectAllType = () => {
+    const allSelected = Object.values(typeFilters).every((v) => v);
+    const newFilters = Object.keys(typeFilters).reduce((acc, key) => {
+      acc[key as keyof typeof typeFilters] = !allSelected;
+      return acc;
+    }, {} as typeof typeFilters);
+    setTypeFilters(newFilters);
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const handleSelectAllRisk = () => {
+    const allSelected = Object.values(riskFilters).every((v) => v);
+    const newFilters = Object.keys(riskFilters).reduce((acc, key) => {
+      acc[key as keyof typeof riskFilters] = !allSelected;
+      return acc;
+    }, {} as typeof riskFilters);
+    setRiskFilters(newFilters);
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const handleSelectAllLanguage = () => {
+    const allSelected = Object.values(languageFilters).every((v) => v);
+    setLanguageFilters({
+      zh: !allSelected,
+      ms: !allSelected,
+      en: !allSelected,
+    });
+    setCurrentPage(1);
+    setPageInput("1");
+  };
+
+  const getFilterIcon = (filterType: "type" | "risk" | "language") => {
+    const hasActiveFilters =
+      filterType === "type"
+        ? Object.values(typeFilters).some((v) => !v)
+        : filterType === "risk"
+        ? Object.values(riskFilters).some((v) => !v)
+        : Object.values(languageFilters).some((v) => !v);
+
+    return (
+      <svg
+        className={`w-3 h-3 ${
+          hasActiveFilters
+            ? "text-orange-600 dark:text-orange-400"
+            : "text-gray-400"
+        }`}
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      </svg>
+    );
+  };
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDetections = filteredAndSortedDetections.slice(
+    startIndex,
+    endIndex
+  );
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex-1 bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="h-full flex flex-col">
+          {/* Table */}
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                  <tr>
+                    <th className="w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center space-x-1">
+                        <span>Type</span>
+                        <button
+                          ref={setTypeRef}
+                          onClick={() => toggleFilterPopup("type")}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Filter by Type"
+                        >
+                          {getFilterIcon("type")}
+                        </button>
+                      </div>
+                    </th>
+                    <th className="w-48 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <span>Target / Domain</span>
+                    </th>
+                    <th className="w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center space-x-1">
+                        <span>Risk Level</span>
+                        <button
+                          ref={setRiskRef}
+                          onClick={() => toggleFilterPopup("risk")}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Filter by Risk Level"
+                        >
+                          {getFilterIcon("risk")}
+                        </button>
+                      </div>
+                    </th>
+                    <th className="w-20 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center space-x-1">
+                        <span>Language</span>
+                        <button
+                          ref={setLanguageRef}
+                          onClick={() => toggleFilterPopup("language")}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Filter by Language"
+                        >
+                          {getFilterIcon("language")}
+                        </button>
+                      </div>
+                    </th>
+                    <th className="w-40 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center space-x-1">
+                        <span>Detected Date & Time</span>
+                        <button
+                          onClick={handleDateSort}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Sort by Date & Time"
+                        >
+                          {getDateSortIcon()}
+                        </button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {currentDetections.map((detection) => (
+                    <tr
+                      key={detection.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                      {detection.risk_level}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap max-w-xs">
-                    <div className="text-sm text-gray-900 dark:text-white truncate">
-                      {detection.domain || detection.platform || "N/A"}
-                    </div>
-                    {detection.url && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {detection.url}
+                      <td className="w-24 px-3 py-2">
+                        <div className="flex items-center">
+                          <span className="text-sm mr-1">
+                            {getContentTypeIcon(detection.content_type)}
+                          </span>
+                          <span className="text-xs font-medium text-gray-900 dark:text-white capitalize">
+                            {detection.content_type === "socialmedia"
+                              ? "Social Media"
+                              : detection.content_type}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="w-48 px-3 py-2">
+                        {detection.content_type === "email" ? (
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                            Information Hidden
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-900 dark:text-white truncate">
+                            {detection.domain || detection.platform || "N/A"}
+                          </div>
+                        )}
+                      </td>
+                      <td className="w-24 px-3 py-2">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRiskLevelColor(
+                            detection.risk_level
+                          )}`}
+                        >
+                          {detection.risk_level}
+                        </span>
+                      </td>
+                      <td className="w-20 px-3 py-2 text-xs text-gray-900 dark:text-white">
+                        {detection.detected_language.toUpperCase()}
+                      </td>
+                      <td className="w-40 px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(detection.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Filter Dropdown Overlays */}
+          {openFilterPopup && filterButtonRefs[openFilterPopup] && (
+            <div
+              className="fixed z-50"
+              style={{
+                top:
+                  filterButtonRefs[openFilterPopup]!.getBoundingClientRect()
+                    .bottom +
+                  window.scrollY +
+                  4,
+                left:
+                  filterButtonRefs[openFilterPopup]!.getBoundingClientRect()
+                    .left +
+                  window.scrollX -
+                  8,
+                width: Math.max(
+                  200,
+                  filterButtonRefs[openFilterPopup]!.getBoundingClientRect()
+                    .width + 16
+                ),
+              }}
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                      Filter by{" "}
+                      {openFilterPopup === "type"
+                        ? "Type"
+                        : openFilterPopup === "risk"
+                        ? "Risk Level"
+                        : "Language"}
+                    </h4>
+                    <button
+                      onClick={() => setOpenFilterPopup(null)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto">
+                    {openFilterPopup === "type" && (
+                      <div className="space-y-2">
+                        {/* Select All checkbox */}
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded border-b border-gray-200 dark:border-gray-600 pb-2">
+                          <input
+                            type="checkbox"
+                            checked={Object.values(typeFilters).every((v) => v)}
+                            onChange={handleSelectAllType}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {Object.values(typeFilters).every((v) => v)
+                              ? "Clear All"
+                              : "Select All"}
+                          </span>
+                        </label>
+
+                        {Object.entries(typeFilters).map(([type, checked]) => (
+                          <label
+                            key={type}
+                            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                handleTypeFilterChange(
+                                  type as keyof typeof typeFilters
+                                )
+                              }
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                              {type === "socialmedia" ? "Social Media" : type}
+                            </span>
+                          </label>
+                        ))}
                       </div>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {detection.detected_language.toUpperCase()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(detection.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+                    {openFilterPopup === "risk" && (
+                      <div className="space-y-2">
+                        {/* Select All checkbox */}
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded border-b border-gray-200 dark:border-gray-600 pb-2">
+                          <input
+                            type="checkbox"
+                            checked={Object.values(riskFilters).every((v) => v)}
+                            onChange={handleSelectAllRisk}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {Object.values(riskFilters).every((v) => v)
+                              ? "Clear All"
+                              : "Select All"}
+                          </span>
+                        </label>
+
+                        {Object.entries(riskFilters).map(([risk, checked]) => (
+                          <label
+                            key={risk}
+                            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                handleRiskFilterChange(
+                                  risk as keyof typeof riskFilters
+                                )
+                              }
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full mr-1 ${
+                                  risk === "high"
+                                    ? "bg-red-500"
+                                    : risk === "medium"
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                              ></span>
+                              {risk}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {openFilterPopup === "language" && (
+                      <div className="space-y-2">
+                        <div className="relative mb-2">
+                          <input
+                            type="text"
+                            placeholder="Search languages..."
+                            value={languageSearchTerm}
+                            onChange={(e) =>
+                              setLanguageSearchTerm(e.target.value)
+                            }
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <svg
+                            className="absolute right-3 top-2.5 w-4 h-4 text-gray-400"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+
+                        {/* Select All checkbox */}
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded border-b border-gray-200 dark:border-gray-600 pb-2">
+                          <input
+                            type="checkbox"
+                            checked={Object.values(languageFilters).every(
+                              (v) => v
+                            )}
+                            onChange={handleSelectAllLanguage}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {Object.values(languageFilters).every((v) => v)
+                              ? "Clear All"
+                              : "Select All"}
+                          </span>
+                        </label>
+
+                        {getFilteredLanguages().map((language) => {
+                          const languageMap = {
+                            zh: "Chinese",
+                            ms: "Malay (Bahasa)",
+                            en: "English",
+                          };
+                          return (
+                            <label
+                              key={language}
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  languageFilters[
+                                    language as keyof typeof languageFilters
+                                  ]
+                                }
+                                onChange={() =>
+                                  handleLanguageFilterChange(language)
+                                }
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {
+                                  languageMap[
+                                    language as keyof typeof languageMap
+                                  ]
+                                }
+                              </span>
+                            </label>
+                          );
+                        })}
+                        {getFilteredLanguages().length === 0 &&
+                          languageSearchTerm && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+                              No languages found matching "{languageSearchTerm}"
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pagination */}
+          <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-t border-gray-200 dark:border-gray-600">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-gray-700 dark:text-gray-300">
+                  Showing {startIndex + 1} to{" "}
+                  {Math.min(endIndex, filteredAndSortedDetections.length)} of{" "}
+                  {filteredAndSortedDetections.length} detections
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Page
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => handlePageInputChange(e.target.value)}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && handlePageInputSubmit()
+                    }
+                    onBlur={handlePageInputSubmit}
+                    className="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-white"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    of {totalPages}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
