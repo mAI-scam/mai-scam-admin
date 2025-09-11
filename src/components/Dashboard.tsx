@@ -8,11 +8,14 @@ import {
   fetchDashboardDataFromAPI,
   checkDynamoDBConfiguration,
 } from "@/lib/dashboardApi";
+import {
+  getLanguageDisplayName,
+  LANGUAGE_ABBREVIATIONS,
+} from "@/data/constants";
 import SignIn from "@/screens/Signin";
 import Overview from "@/screens/Overview";
 import DetectionLog from "@/screens/DetectionLog";
 import LanguageInsight from "@/screens/LanguageInsight";
-import ThreatAnalysis from "@/screens/ThreatAnalysis";
 import WebsiteAnalysis from "@/screens/WebsiteAnalysis";
 import EmailAnalysis from "@/screens/EmailAnalysis";
 import SocialmediaAnalysis from "@/screens/SocialmediaAnalysis";
@@ -43,11 +46,36 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     medium: true,
     low: true,
   });
-  const [languageFilters, setLanguageFilters] = useState({
-    zh: true,
-    ms: true,
-    en: true,
-  });
+  const [languageFilters, setLanguageFilters] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  // Function to generate language filters from actual data
+  const generateLanguageFilters = (data: DashboardData) => {
+    const availableLanguages = new Set<string>();
+
+    // Get languages from recent detections
+    data.recentDetections.forEach((detection) => {
+      if (detection.detected_language) {
+        availableLanguages.add(detection.detected_language);
+      }
+    });
+
+    // Get languages from language insights
+    data.languageInsights.forEach((insight) => {
+      if (insight.languageCode) {
+        availableLanguages.add(insight.languageCode);
+      }
+    });
+
+    // Create filters with all available languages set to true
+    const filters: { [key: string]: boolean } = {};
+    availableLanguages.forEach((lang) => {
+      filters[lang] = true;
+    });
+
+    return filters;
+  };
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,10 +97,13 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
       }
 
       setDashboardData(data);
+      setLanguageFilters(generateLanguageFilters(data));
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       // Fallback to dummy data on error
-      setDashboardData(await getDummyData());
+      const fallbackData = await getDummyData();
+      setDashboardData(fallbackData);
+      setLanguageFilters(generateLanguageFilters(fallbackData));
     } finally {
       setIsRefreshing(false);
       setIsInitialLoading(false);
@@ -82,27 +113,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
-
-  const getLanguageDisplayName = (languageCode: string) => {
-    const languageMap: { [key: string]: string } = {
-      zh: "Chinese",
-      ms: "Malay (Bahasa)",
-      en: "English",
-      vi: "Vietnamese",
-      th: "Thai",
-      id: "Indonesian",
-      tl: "Filipino (Tagalog)",
-      my: "Myanmar (Burmese)",
-      km: "Khmer (Cambodian)",
-      lo: "Lao",
-      si: "Sinhala",
-      ta: "Tamil",
-      hi: "Hindi",
-      ja: "Japanese",
-      ko: "Korean",
-    };
-    return languageMap[languageCode] || languageCode.toUpperCase();
-  };
 
   const navigateToDetectionsWithFilter = (
     typeFilter?: string,
@@ -115,7 +125,12 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     // Reset filters to default "all selected" state
     setTypeFilters({ website: true, email: true, socialmedia: true });
     setRiskFilters({ high: true, medium: true, low: true });
-    setLanguageFilters({ zh: true, ms: true, en: true });
+    // Reset language filters to all available languages selected
+    const resetLanguageFilters: { [key: string]: boolean } = {};
+    Object.keys(languageFilters).forEach((lang) => {
+      resetLanguageFilters[lang] = true;
+    });
+    setLanguageFilters(resetLanguageFilters);
 
     // Apply specific filters if provided
     if (typeFilter) {
@@ -135,11 +150,11 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     }
 
     if (languageFilter) {
-      setLanguageFilters({
-        zh: languageFilter === "zh",
-        ms: languageFilter === "ms",
-        en: languageFilter === "en",
+      const filteredLanguageFilters: { [key: string]: boolean } = {};
+      Object.keys(languageFilters).forEach((lang) => {
+        filteredLanguageFilters[lang] = lang === languageFilter;
       });
+      setLanguageFilters(filteredLanguageFilters);
     }
 
     // Reset pagination
@@ -167,8 +182,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
         return "Detection Log";
       case "language":
         return "Language Insights";
-      case "threats":
-        return "Threat Analysis";
       default:
         return "Overview";
     }
@@ -255,9 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           />
         );
       case "language":
-        return <LanguageInsight {...sectionProps} />;
-      case "threats":
-        return <ThreatAnalysis {...sectionProps} />;
+        return <LanguageInsight />;
       default:
         return (
           <Overview
@@ -326,7 +337,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
               { id: "overview", name: "Overview", icon: "📊" },
               { id: "detections", name: "Detection Log", icon: "🔍" },
               { id: "language", name: "Language Insights", icon: "🌐" },
-              { id: "threats", name: "Threat Analysis", icon: "⚠️" },
             ].map((item) => (
               <button
                 key={item.id}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ScamDetection } from "@/data/dummyDynamoDbData";
+import { getContentTypeDisplayName } from "@/data/constants";
 
 interface DetailCardProps {
   detection: ScamDetection;
@@ -24,13 +25,7 @@ const DetailCard: React.FC<DetailCardProps> = ({
         <div className="flex justify-between">
           <span className="text-gray-500 dark:text-gray-400">Type</span>
           <span className="text-gray-900 dark:text-white">
-            {detection.content_type === "website"
-              ? "Website"
-              : detection.content_type === "email"
-              ? "Email"
-              : detection.content_type === "socialmedia"
-              ? "Social Media"
-              : detection.content_type}
+            {getContentTypeDisplayName(detection.content_type)}
           </span>
         </div>
 

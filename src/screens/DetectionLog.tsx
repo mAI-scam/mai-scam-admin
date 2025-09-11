@@ -23,9 +23,9 @@ interface DetectionLogProps extends SectionProps {
   setRiskFilters: React.Dispatch<
     React.SetStateAction<{ high: boolean; medium: boolean; low: boolean }>
   >;
-  languageFilters: { zh: boolean; ms: boolean; en: boolean };
+  languageFilters: { [key: string]: boolean };
   setLanguageFilters: React.Dispatch<
-    React.SetStateAction<{ zh: boolean; ms: boolean; en: boolean }>
+    React.SetStateAction<{ [key: string]: boolean }>
   >;
   currentPage: number;
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;

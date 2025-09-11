@@ -1,152 +1,212 @@
 "use client";
 
-import React from "react";
-import { DashboardData } from "@/data/dummyDynamoDbData";
+import React, { useEffect, useState } from "react";
+import { getPossibleCountries } from "@/data/constants";
+import LanguageCard from "@/components/LanguageInsight/LanguageCard";
+import LanguageDetailCard from "@/components/LanguageInsight/LanguageDetailCard";
 
-interface SectionProps {
-  data: DashboardData;
-  authType: "test" | "google";
-  isRefreshing?: boolean;
+interface LanguageData {
+  language: string;
+  count: number;
+  percentage: number;
+  riskLevel: "High" | "Medium" | "Low";
+  possibleCountries: string[];
 }
 
-const LanguageInsight: React.FC<SectionProps> = ({
-  data,
-  authType,
-}) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Southeast Asia Regional Insights
-        </h3>
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            authType === "google"
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-          }`}
-        >
-          {authType === "google" ? "🔴 Live Data" : "🧪 Test Data"}
-        </span>
-      </div>
+interface CountryDetails {
+  name: string;
+  language: string;
+  detections: number;
+  percentage: number;
+  riskLevel: "High" | "Medium" | "Low";
+  possibleCountries: string[];
+  contentTypes: { type: string; count: number }[];
+  riskDistribution: { level: "Low" | "Medium" | "High"; count: number }[];
+}
 
-      {/* Regional Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.languageInsights.map((language) => (
-          <div
-            key={language.languageCode}
-            className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">🌐</span>
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {language.language}
-                  </h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {language.detections.toLocaleString()} detections
-                  </p>
-                </div>
-              </div>
-              <div
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  language.trend === "up"
-                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                    : language.trend === "down"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                }`}
-              >
-                {language.trend === "up"
-                  ? "📈"
-                  : language.trend === "down"
-                  ? "📉"
-                  : "➡️"}{" "}
-                {language.trendPercentage}
-              </div>
-            </div>
+const LanguageInsight: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [languageData, setLanguageData] = useState<LanguageData[]>([]);
+  const [originalLanguageInsights, setOriginalLanguageInsights] = useState<
+    any[]
+  >([]);
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageData | null>(
+    null
+  );
+  const [countryDetails, setCountryDetails] = useState<CountryDetails | null>(
+    null
+  );
 
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  High Risk:
-                </span>
-                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  {language.highRisk.toLocaleString()}
-                </span>
-              </div>
+  // Generate risk distribution data (mock data for now)
+  const generateRiskDistribution = (
+    totalDetections: number,
+    riskLevel: "High" | "Medium" | "Low"
+  ) => {
+    const distributions = {
+      High: [
+        { level: "Low" as const, count: Math.floor(totalDetections * 0.2) },
+        { level: "Medium" as const, count: Math.floor(totalDetections * 0.3) },
+        { level: "High" as const, count: Math.floor(totalDetections * 0.5) },
+      ],
+      Medium: [
+        { level: "Low" as const, count: Math.floor(totalDetections * 0.4) },
+        { level: "Medium" as const, count: Math.floor(totalDetections * 0.5) },
+        { level: "High" as const, count: Math.floor(totalDetections * 0.1) },
+      ],
+      Low: [
+        { level: "Low" as const, count: Math.floor(totalDetections * 0.6) },
+        { level: "Medium" as const, count: Math.floor(totalDetections * 0.3) },
+        { level: "High" as const, count: Math.floor(totalDetections * 0.1) },
+      ],
+    };
+    return distributions[riskLevel];
+  };
 
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-red-600 h-2 rounded-full"
-                  style={{
-                    width: `${
-                      (language.highRisk / language.detections) * 100
-                    }%`,
-                  }}
-                ></div>
-              </div>
+  useEffect(() => {
+    const loadLanguageData = async () => {
+      try {
+        console.log("📊 Loading language scam data from DynamoDB...");
 
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Top Content Types:
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {language.topContentTypes.map((contentType, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 rounded"
-                    >
-                      {contentType.type} ({contentType.count})
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+        // Fetch processed dashboard data from API
+        const response = await fetch("/api/dashboard");
+        const result = await response.json();
 
-      {/* Top Malicious Domains */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Top Malicious Domains
-        </h4>
-        <div className="space-y-3">
-          {data.topDomains.slice(0, 10).map((domain, index) => (
-            <div
-              key={domain.domain}
-              className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-            >
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400 w-6">
-                  {index + 1}.
-                </span>
-                <div className="ml-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {domain.domain}
-                  </span>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {domain.count} detections
-                  </div>
-                </div>
-              </div>
-              <span
-                className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  domain.riskLevel.toLowerCase().includes("high") ||
-                  domain.riskLevel.toLowerCase().includes("critical")
-                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                    : domain.riskLevel.toLowerCase().includes("medium")
-                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                    : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                }`}
-              >
-                {domain.riskLevel}
-              </span>
-            </div>
-          ))}
+        console.log("✅ Dashboard API response:", result);
+
+        if (!result.success || !result.data) {
+          console.error(
+            "❌ API request failed:",
+            result.error || result.message
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        const dashboardData = result.data;
+        console.log("📈 Dashboard data loaded:", dashboardData);
+
+        // Use the pre-processed language insights from the API
+        const languageInsights = dashboardData.languageInsights || [];
+        console.log("🔍 Language insights from API:", languageInsights);
+
+        // Store original insights for content type access
+        setOriginalLanguageInsights(languageInsights);
+
+        // Convert to our format with country mapping
+        const totalDetections = languageInsights.reduce(
+          (sum: number, insight: any) => sum + insight.detections,
+          0
+        );
+
+        const processedLanguageData: LanguageData[] = languageInsights.map(
+          (insight: any) => {
+            const percentage = (insight.detections / totalDetections) * 100;
+
+            let riskLevel: "High" | "Medium" | "Low" = "Low";
+            if (percentage >= 30) riskLevel = "High";
+            else if (percentage >= 15) riskLevel = "Medium";
+
+            return {
+              language: insight.language,
+              count: insight.detections,
+              percentage: Math.round(percentage * 10) / 10,
+              riskLevel,
+              possibleCountries: getPossibleCountries(insight.language),
+            };
+          }
+        );
+
+        console.log("📈 Language data processed:", processedLanguageData);
+
+        setLanguageData(processedLanguageData);
+
+        // Set the language with most detections as default active
+        if (processedLanguageData.length > 0) {
+          setSelectedLanguage(processedLanguageData[0]);
+          setCountryDetails({
+            name: processedLanguageData[0].possibleCountries[0],
+            language: processedLanguageData[0].language,
+            detections: processedLanguageData[0].count,
+            percentage: processedLanguageData[0].percentage,
+            riskLevel: processedLanguageData[0].riskLevel,
+            possibleCountries: processedLanguageData[0].possibleCountries,
+            contentTypes:
+              languageInsights.find(
+                (insight: any) =>
+                  insight.language === processedLanguageData[0].language
+              )?.topContentTypes || [],
+            riskDistribution: generateRiskDistribution(
+              processedLanguageData[0].count,
+              processedLanguageData[0].riskLevel
+            ),
+          });
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("❌ Error loading language data:", error);
+        setIsLoading(false);
+      }
+    };
+
+    loadLanguageData();
+  }, []);
+
+  const handleLanguageClick = (language: LanguageData) => {
+    setSelectedLanguage(language);
+
+    // Find the original insight data for content types
+    const originalInsight = originalLanguageInsights.find(
+      (insight: any) => insight.language === language.language
+    );
+
+    setCountryDetails({
+      name: language.possibleCountries[0],
+      language: language.language,
+      detections: language.count,
+      percentage: language.percentage,
+      riskLevel: language.riskLevel,
+      possibleCountries: language.possibleCountries,
+      contentTypes: originalInsight?.topContentTypes || [],
+      riskDistribution: generateRiskDistribution(
+        language.count,
+        language.riskLevel
+      ),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading language insights...
+          </p>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex-1 flex gap-6 h-full min-h-0 max-h-full">
+        {/* Left Column - Language Cards */}
+        <div className="flex-1 flex flex-col h-full min-h-0 max-h-full">
+          <div className="h-full space-y-3 overflow-y-auto pr-2 scrollbar-thin">
+            {languageData.map((lang, index) => (
+              <LanguageCard
+                key={lang.language}
+                language={lang}
+                isSelected={selectedLanguage?.language === lang.language}
+                onClick={handleLanguageClick}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column - Language Details */}
+        <LanguageDetailCard countryDetails={countryDetails} />
       </div>
     </div>
   );

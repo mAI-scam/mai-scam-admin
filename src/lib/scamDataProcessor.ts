@@ -48,27 +48,8 @@ const safeString = (value: unknown): string => {
   return String(value);
 };
 
-// Helper function to get language display name
-export const getLanguageDisplayName = (languageCode: string): string => {
-  const languageMap: { [key: string]: string } = {
-    zh: "Chinese",
-    ms: "Malay (Bahasa)",
-    en: "English",
-    vi: "Vietnamese",
-    th: "Thai",
-    id: "Indonesian",
-    tl: "Filipino (Tagalog)",
-    my: "Myanmar (Burmese)",
-    km: "Khmer (Cambodian)",
-    lo: "Lao",
-    si: "Sinhala",
-    ta: "Tamil",
-    hi: "Hindi",
-    ja: "Japanese",
-    ko: "Korean",
-  };
-  return languageMap[languageCode] || languageCode.toUpperCase();
-};
+// Import language constants
+import { getLanguageDisplayName } from "@/data/constants";
 
 // Helper function to safely get content type
 const safeContentType = (

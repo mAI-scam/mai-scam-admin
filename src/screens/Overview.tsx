@@ -16,6 +16,7 @@ import {
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 import { DashboardData } from "@/data/dummyDynamoDbData";
+import { getLanguageDisplayName } from "@/data/constants";
 
 ChartJS.register(
   CategoryScale,
@@ -48,28 +49,6 @@ const Overview: React.FC<OverviewProps> = ({
   navigateToDetectionsWithFilter,
   getLanguageDisplayName,
 }) => {
-  // Helper function to get language display name
-  const getLanguageDisplayNameLocal = (languageCode: string): string => {
-    const languageMap: { [key: string]: string } = {
-      zh: "Chinese",
-      ms: "Malay (Bahasa)",
-      en: "English",
-      vi: "Vietnamese",
-      th: "Thai",
-      id: "Indonesian",
-      tl: "Filipino (Tagalog)",
-      my: "Myanmar (Burmese)",
-      km: "Khmer (Cambodian)",
-      lo: "Lao",
-      si: "Sinhala",
-      ta: "Tamil",
-      hi: "Hindi",
-      ja: "Japanese",
-      ko: "Korean",
-    };
-    return languageMap[languageCode] || languageCode.toUpperCase();
-  };
-
   // First row stats
   const mainStats = [
     {

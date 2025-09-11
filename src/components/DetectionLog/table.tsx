@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { DashboardData } from "@/data/dummyDynamoDbData";
+import { LANGUAGE_ABBREVIATIONS, getContentTypeDisplayName } from "@/data/constants";
 
 interface DetectionTableProps {
   data: DashboardData;
@@ -17,9 +18,9 @@ interface DetectionTableProps {
   setRiskFilters: React.Dispatch<
     React.SetStateAction<{ high: boolean; medium: boolean; low: boolean }>
   >;
-  languageFilters: { zh: boolean; ms: boolean; en: boolean };
+  languageFilters: { [key: string]: boolean };
   setLanguageFilters: React.Dispatch<
-    React.SetStateAction<{ zh: boolean; ms: boolean; en: boolean }>
+    React.SetStateAction<{ [key: string]: boolean }>
   >;
   currentPage: number;
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
@@ -215,15 +216,10 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
   };
 
   const getFilteredLanguages = () => {
-    const languageMap = {
-      zh: "Chinese",
-      ms: "Malay (Bahasa)",
-      en: "English",
-    };
     const languages = Object.keys(languageFilters);
     if (!languageSearchTerm) return languages;
     return languages.filter((lang) =>
-      languageMap[lang as keyof typeof languageMap]
+      LANGUAGE_ABBREVIATIONS[lang]
         .toLowerCase()
         .includes(languageSearchTerm.toLowerCase())
     );
@@ -267,11 +263,11 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
 
   const handleSelectAllLanguage = () => {
     const allSelected = Object.values(languageFilters).every((v) => v);
-    setLanguageFilters({
-      zh: !allSelected,
-      ms: !allSelected,
-      en: !allSelected,
+    const newFilters: { [key: string]: boolean } = {};
+    Object.keys(languageFilters).forEach((lang) => {
+      newFilters[lang] = !allSelected;
     });
+    setLanguageFilters(newFilters);
     setCurrentPage(1);
     setPageInput("1");
   };
@@ -383,10 +379,8 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                         <span className="text-sm mr-1">
                           {getContentTypeIcon(detection.content_type)}
                         </span>
-                        <span className="text-xs font-medium text-gray-900 dark:text-white capitalize">
-                          {detection.content_type === "socialmedia"
-                            ? "Social Media"
-                            : detection.content_type}
+                        <span className="text-xs font-medium text-gray-900 dark:text-white">
+                          {getContentTypeDisplayName(detection.content_type)}
                         </span>
                       </div>
                     </td>
@@ -607,11 +601,6 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                       </label>
 
                       {getFilteredLanguages().map((language) => {
-                        const languageMap = {
-                          zh: "Chinese",
-                          ms: "Malay (Bahasa)",
-                          en: "English",
-                        };
                         return (
                           <label
                             key={language}
@@ -619,22 +608,14 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                           >
                             <input
                               type="checkbox"
-                              checked={
-                                languageFilters[
-                                  language as keyof typeof languageFilters
-                                ]
-                              }
+                              checked={languageFilters[language]}
                               onChange={() =>
                                 handleLanguageFilterChange(language)
                               }
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {
-                                languageMap[
-                                  language as keyof typeof languageMap
-                                ]
-                              }
+                              {LANGUAGE_ABBREVIATIONS[language]}
                             </span>
                           </label>
                         );
