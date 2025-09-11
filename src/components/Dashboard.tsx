@@ -15,6 +15,7 @@ import LanguageInsight from "@/screens/LanguageInsight";
 import WebsiteAnalysis from "@/screens/WebsiteAnalysis";
 import EmailAnalysis from "@/screens/EmailAnalysis";
 import SocialmediaAnalysis from "@/screens/SocialmediaAnalysis";
+import Blacklist from "@/screens/Blacklist";
 
 interface DashboardProps {
   children?: React.ReactNode;
@@ -180,6 +181,8 @@ const Dashboard: React.FC<DashboardProps> = () => {
         return "Detection Log";
       case "language":
         return "Language Insights";
+      case "blacklist":
+        return "Blacklist";
       default:
         return "Overview";
     }
@@ -266,6 +269,8 @@ const Dashboard: React.FC<DashboardProps> = () => {
         );
       case "language":
         return <LanguageInsight />;
+      case "blacklist":
+        return <Blacklist data={dashboardData} />;
       default:
         return (
           <Overview
@@ -333,6 +338,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
               { id: "overview", name: "Overview", icon: "📊" },
               { id: "detections", name: "Detection Log", icon: "🔍" },
               { id: "language", name: "Language Insights", icon: "🌐" },
+              { id: "blacklist", name: "Blacklist", icon: "🚫" },
             ].map((item) => (
               <button
                 key={item.id}
