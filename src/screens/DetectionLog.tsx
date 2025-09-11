@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { DashboardData } from "@/data/dummyDynamoDbData";
 import DetectionTable from "@/components/DetectionLog/table";
 
@@ -33,7 +33,7 @@ interface DetectionLogProps extends SectionProps {
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
-  onOpenAnalysis?: (detection: any) => void;
+  onOpenAnalysis?: (detection: DashboardData["recentDetections"][0]) => void;
 }
 
 const DetectionLog: React.FC<DetectionLogProps> = ({

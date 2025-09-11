@@ -11,11 +11,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-import {
-  getCountryInfo,
-  getRiskColor,
-  getContentTypeDisplayName,
-} from "@/data/constants";
+import { getCountryInfo, getRiskColor } from "@/data/constants";
 
 ChartJS.register(
   CategoryScale,
@@ -44,17 +40,6 @@ interface LanguageDetailCardProps {
 const LanguageDetailCard: React.FC<LanguageDetailCardProps> = ({
   countryDetails,
 }) => {
-  const getRiskTextColor = (riskLevel: "High" | "Medium" | "Low") => {
-    switch (riskLevel) {
-      case "High":
-        return "text-red-700 bg-red-100";
-      case "Medium":
-        return "text-yellow-700 bg-yellow-100";
-      default:
-        return "text-green-700 bg-green-100";
-    }
-  };
-
   // Generate risk distribution data (mock data for now)
   const generateRiskDistribution = (
     totalDetections: number,
@@ -232,7 +217,7 @@ const LanguageDetailCard: React.FC<LanguageDetailCardProps> = ({
                         borderColor: "rgba(255, 255, 255, 0.1)",
                         borderWidth: 1,
                         callbacks: {
-                          label: function (context: any) {
+                          label: function (context: { dataIndex: number }) {
                             const risk = riskDistribution[context.dataIndex];
                             return `${risk.level}: ${risk.count} detections`;
                           },

@@ -34,10 +34,18 @@ interface RawDetection {
       };
       [key: string]: unknown;
     };
+    images?: Array<{
+      s3_url?: unknown;
+      s3Url?: unknown;
+      s3_key?: unknown;
+      s3Key?: unknown;
+      [key: string]: unknown;
+    }>;
     [key: string]: unknown;
   };
   url?: unknown;
   platform?: unknown;
+  post_url?: unknown;
   [key: string]: unknown; // Allow any additional fields from NoSQL
 }
 
@@ -102,17 +110,13 @@ export const transformRawDetections = (
         ) ||
         safeString(detection.platform) ||
         undefined,
-      post_url: safeString((detection as any).post_url) || undefined,
-      images: Array.isArray((detection as any)?.extracted_data?.images)
-        ? ((detection as any).extracted_data.images as any[])
+      post_url: safeString(detection.post_url) || undefined,
+      images: Array.isArray(detection.extracted_data?.images)
+        ? detection.extracted_data.images
             .filter((img) => img && (img.s3_url || img.s3Key || img.s3_key))
             .map((img) => ({
-              s3_url:
-                safeString((img as any).s3_url) ||
-                safeString((img as any).s3Url),
-              s3_key:
-                safeString((img as any).s3_key) ||
-                safeString((img as any).s3Key),
+              s3_url: safeString(img.s3_url) || safeString(img.s3Url),
+              s3_key: safeString(img.s3_key) || safeString(img.s3Key),
             }))
         : undefined,
       analysis:

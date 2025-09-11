@@ -2,7 +2,10 @@
 
 import React, { useState } from "react";
 import { DashboardData } from "@/data/dummyDynamoDbData";
-import { LANGUAGE_ABBREVIATIONS, getContentTypeDisplayName } from "@/data/constants";
+import {
+  LANGUAGE_ABBREVIATIONS,
+  getContentTypeDisplayName,
+} from "@/data/constants";
 
 interface DetectionTableProps {
   data: DashboardData;
@@ -28,7 +31,7 @@ interface DetectionTableProps {
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
-  onRowClick?: (detection: any) => void;
+  onRowClick?: (detection: DashboardData["recentDetections"][0]) => void;
 }
 
 const DetectionTable: React.FC<DetectionTableProps> = ({

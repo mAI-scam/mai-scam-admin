@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Image from "next/image";
 import { ScamDetection } from "@/data/dummyDynamoDbData";
 import { getContentTypeDisplayName } from "@/data/constants";
 
@@ -65,7 +66,7 @@ const DetailCard: React.FC<DetailCardProps> = ({
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Platform</span>
             <span className="text-gray-900 dark:text-white">
-              {(detection as any).platform || "Unknown"}
+              {detection.platform || "Unknown"}
             </span>
           </div>
         )}
@@ -79,14 +80,15 @@ const DetailCard: React.FC<DetailCardProps> = ({
             <div className="max-h-[60vh] overflow-y-auto grid grid-cols-1 gap-2">
               {detection.images.map((img, index) => (
                 <div key={index} className="relative">
-                  <img
+                  <Image
                     src={img.s3_url}
                     alt={`Post image ${index + 1}`}
+                    width={400}
+                    height={300}
                     className="w-full h-auto max-h-[40vh] object-contain rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => setSelectedImage(img.s3_url)}
-                    onError={(e) => {
+                    onError={() => {
                       console.error(`Failed to load image: ${img.s3_url}`);
-                      (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 </div>
@@ -115,9 +117,11 @@ const DetailCard: React.FC<DetailCardProps> = ({
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative w-full h-full flex items-center justify-center">
-            <img
+            <Image
               src={selectedImage}
               alt="Full size image"
+              width={800}
+              height={600}
               className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />

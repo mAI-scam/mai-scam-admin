@@ -8,11 +8,7 @@ import {
   fetchDashboardDataFromAPI,
   checkDynamoDBConfiguration,
 } from "@/lib/dashboardApi";
-import {
-  getLanguageDisplayName,
-  LANGUAGE_ABBREVIATIONS,
-} from "@/data/constants";
-import SignIn from "@/screens/Signin";
+import { getLanguageDisplayName } from "@/data/constants";
 import Overview from "@/screens/Overview";
 import DetectionLog from "@/screens/DetectionLog";
 import LanguageInsight from "@/screens/LanguageInsight";
@@ -24,16 +20,17 @@ interface DashboardProps {
   children?: React.ReactNode;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ children }) => {
+const Dashboard: React.FC<DashboardProps> = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedDetection, setSelectedDetection] = useState<any | null>(null);
+  const [selectedDetection, setSelectedDetection] = useState<
+    DashboardData["recentDetections"][0] | null
+  >(null);
 
   // Filter states for detections
   const [typeFilters, setTypeFilters] = useState({
@@ -106,7 +103,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
       setLanguageFilters(generateLanguageFilters(fallbackData));
     } finally {
       setIsRefreshing(false);
-      setIsInitialLoading(false);
     }
   }, [user]);
 
@@ -166,7 +162,9 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
     loadDashboardData();
   };
 
-  const handleOpenAnalysis = (detection: any) => {
+  const handleOpenAnalysis = (
+    detection: DashboardData["recentDetections"][0]
+  ) => {
     setSelectedDetection(detection);
   };
 
@@ -245,7 +243,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           <Overview
             {...sectionProps}
             navigateToDetectionsWithFilter={navigateToDetectionsWithFilter}
-            getLanguageDisplayName={getLanguageDisplayName}
           />
         );
       case "detections":
@@ -274,7 +271,6 @@ const Dashboard: React.FC<DashboardProps> = ({ children }) => {
           <Overview
             {...sectionProps}
             navigateToDetectionsWithFilter={navigateToDetectionsWithFilter}
-            getLanguageDisplayName={getLanguageDisplayName}
           />
         );
     }

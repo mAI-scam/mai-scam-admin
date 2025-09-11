@@ -20,8 +20,10 @@ export async function GET(req: Request) {
     return new Response(JSON.stringify({ url: signedUrl }), {
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`S3 API: Error for key: ${key}`, error);
-    return new Response(`Error: ${error.message}`, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return new Response(`Error: ${errorMessage}`, { status: 500 });
   }
 }

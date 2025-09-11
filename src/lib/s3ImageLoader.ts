@@ -5,6 +5,16 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+// Interface for AWS SDK error objects
+interface AWSError {
+  code?: string;
+  message?: string;
+  $metadata?: {
+    httpStatusCode?: number;
+    requestId?: string;
+  };
+}
+
 // Environment variables (server-side only)
 const AWS_REGION = process.env.AWS_REGION;
 const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
@@ -57,12 +67,19 @@ export const getS3ImageUrl = async (s3Key: string): Promise<string | null> => {
         })
       );
       console.log(`S3 object exists for key: ${s3Key}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      const awsError = error as AWSError;
+      const errorCode = awsError?.code;
+      const statusCode = awsError?.$metadata?.httpStatusCode;
+      const requestId = awsError?.$metadata?.requestId;
+
       console.error(`S3 object not found or access denied for key: ${s3Key}`, {
-        error: error.message,
-        code: error.code,
-        statusCode: error.$metadata?.httpStatusCode,
-        requestId: error.$metadata?.requestId,
+        error: errorMessage,
+        code: errorCode,
+        statusCode: statusCode,
+        requestId: requestId,
       });
       return null;
     }

@@ -16,7 +16,6 @@ import {
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 import { DashboardData } from "@/data/dummyDynamoDbData";
-import { getLanguageDisplayName } from "@/data/constants";
 
 ChartJS.register(
   CategoryScale,
@@ -31,7 +30,6 @@ ChartJS.register(
 interface SectionProps {
   data: DashboardData;
   authType: "test" | "google";
-  isRefreshing?: boolean;
 }
 
 interface OverviewProps extends SectionProps {
@@ -40,14 +38,11 @@ interface OverviewProps extends SectionProps {
     riskFilter?: string,
     languageFilter?: string
   ) => void;
-  getLanguageDisplayName: (languageCode: string) => string;
 }
 
 const Overview: React.FC<OverviewProps> = ({
   data,
-  isRefreshing,
   navigateToDetectionsWithFilter,
-  getLanguageDisplayName,
 }) => {
   // First row stats
   const mainStats = [

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getPossibleCountries } from "@/data/constants";
+import { LanguageInsight as ApiLanguageInsight } from "@/data/dummyDynamoDbData";
 import LanguageCard from "@/components/LanguageInsight/LanguageCard";
 import LanguageDetailCard from "@/components/LanguageInsight/LanguageDetailCard";
 
@@ -28,7 +29,7 @@ const LanguageInsight: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [languageData, setLanguageData] = useState<LanguageData[]>([]);
   const [originalLanguageInsights, setOriginalLanguageInsights] = useState<
-    any[]
+    ApiLanguageInsight[]
   >([]);
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageData | null>(
     null
@@ -94,12 +95,13 @@ const LanguageInsight: React.FC = () => {
 
         // Convert to our format with country mapping
         const totalDetections = languageInsights.reduce(
-          (sum: number, insight: any) => sum + insight.detections,
+          (sum: number, insight: ApiLanguageInsight) =>
+            sum + insight.detections,
           0
         );
 
         const processedLanguageData: LanguageData[] = languageInsights.map(
-          (insight: any) => {
+          (insight: ApiLanguageInsight) => {
             const percentage = (insight.detections / totalDetections) * 100;
 
             let riskLevel: "High" | "Medium" | "Low" = "Low";
@@ -132,7 +134,7 @@ const LanguageInsight: React.FC = () => {
             possibleCountries: processedLanguageData[0].possibleCountries,
             contentTypes:
               languageInsights.find(
-                (insight: any) =>
+                (insight: ApiLanguageInsight) =>
                   insight.language === processedLanguageData[0].language
               )?.topContentTypes || [],
             riskDistribution: generateRiskDistribution(
@@ -157,7 +159,7 @@ const LanguageInsight: React.FC = () => {
 
     // Find the original insight data for content types
     const originalInsight = originalLanguageInsights.find(
-      (insight: any) => insight.language === language.language
+      (insight: ApiLanguageInsight) => insight.language === language.language
     );
 
     setCountryDetails({
@@ -194,7 +196,7 @@ const LanguageInsight: React.FC = () => {
         {/* Left Column - Language Cards */}
         <div className="flex-1 flex flex-col h-full min-h-0 max-h-full">
           <div className="h-full space-y-3 overflow-y-auto pr-2 scrollbar-thin">
-            {languageData.map((lang, index) => (
+            {languageData.map((lang) => (
               <LanguageCard
                 key={lang.language}
                 language={lang}
