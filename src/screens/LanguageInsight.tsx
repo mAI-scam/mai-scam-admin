@@ -25,7 +25,13 @@ interface CountryDetails {
   riskDistribution: { level: "Low" | "Medium" | "High"; count: number }[];
 }
 
-const LanguageInsight: React.FC = () => {
+interface LanguageInsightProps {
+  processedLanguageInsights?: any[] | null;
+}
+
+const LanguageInsight: React.FC<LanguageInsightProps> = ({
+  processedLanguageInsights,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [languageData, setLanguageData] = useState<LanguageData[]>([]);
   const [originalLanguageInsights, setOriginalLanguageInsights] = useState<
@@ -37,6 +43,41 @@ const LanguageInsight: React.FC = () => {
   const [countryDetails, setCountryDetails] = useState<CountryDetails | null>(
     null
   );
+  const [sortBy, setSortBy] = useState<"detections" | "risk">("detections");
+
+  // Sort language data based on current sort option
+  const sortedLanguageData = React.useMemo(() => {
+    if (!languageData.length) return languageData;
+
+    return [...languageData].sort((a, b) => {
+      if (sortBy === "detections") {
+        return b.count - a.count; // Sort by detection count (descending)
+      } else {
+        // Sort by risk level (High > Medium > Low)
+        const riskOrder = { High: 3, Medium: 2, Low: 1 };
+        return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
+      }
+    });
+  }, [languageData, sortBy]);
+
+  // Calculate maximum risk distribution value across all languages for consistent y-axis scaling
+  const maxRiskDistributionValue = React.useMemo(() => {
+    if (!originalLanguageInsights.length) return 100; // Default fallback
+
+    let maxValue = 0;
+    originalLanguageInsights.forEach((insight) => {
+      if (insight.riskDistribution) {
+        insight.riskDistribution.forEach((dist) => {
+          if (dist.count > maxValue) {
+            maxValue = dist.count;
+          }
+        });
+      }
+    });
+
+    // Round up to nearest 10 for cleaner tick marks
+    return Math.ceil(maxValue / 10) * 10 || 100;
+  }, [originalLanguageInsights]);
 
   // Calculate language risk level based on actual risk distribution
   const calculateLanguageRiskLevel = (
@@ -116,6 +157,60 @@ const LanguageInsight: React.FC = () => {
   useEffect(() => {
     const loadLanguageData = async () => {
       try {
+        // If we have pre-calculated data, use it directly
+        if (processedLanguageInsights && processedLanguageInsights.length > 0) {
+          console.log("📊 Using pre-calculated language insights");
+
+          // Store original insights for content type access
+          setOriginalLanguageInsights(processedLanguageInsights);
+
+          // Convert to our format
+          const processedLanguageData: LanguageData[] =
+            processedLanguageInsights.map((insight: any) => ({
+              language: insight.language,
+              count: insight.detections,
+              percentage: insight.percentage,
+              riskLevel: insight.riskLevel,
+              possibleCountries: insight.possibleCountries,
+            }));
+
+          console.log(
+            "📈 Language data from pre-calculated insights:",
+            processedLanguageData
+          );
+
+          setLanguageData(processedLanguageData);
+
+          // Set the language with most detections as default active
+          if (processedLanguageData.length > 0) {
+            setSelectedLanguage(processedLanguageData[0]);
+            const firstLanguageInsight = processedLanguageInsights.find(
+              (insight: any) =>
+                insight.language === processedLanguageData[0].language
+            );
+            setCountryDetails({
+              name: processedLanguageData[0].possibleCountries[0],
+              language: processedLanguageData[0].language,
+              detections: processedLanguageData[0].count,
+              percentage: processedLanguageData[0].percentage,
+              riskLevel: processedLanguageData[0].riskLevel,
+              possibleCountries: processedLanguageData[0].possibleCountries,
+              contentTypes: firstLanguageInsight?.topContentTypes || [],
+              riskDistribution: firstLanguageInsight
+                ? getRiskDistribution(firstLanguageInsight)
+                : [
+                    { level: "Low" as const, count: 0 },
+                    { level: "Medium" as const, count: 0 },
+                    { level: "High" as const, count: 0 },
+                  ],
+            });
+          }
+
+          setIsLoading(false);
+          return;
+        }
+
+        // Fallback to original API call if no pre-calculated data
         console.log("📊 Loading language scam data from DynamoDB...");
 
         // Fetch processed dashboard data from API
@@ -204,7 +299,7 @@ const LanguageInsight: React.FC = () => {
     };
 
     loadLanguageData();
-  }, []);
+  }, [processedLanguageInsights]);
 
   const handleLanguageClick = (language: LanguageData) => {
     setSelectedLanguage(language);
@@ -250,8 +345,32 @@ const LanguageInsight: React.FC = () => {
       <div className="flex-1 flex gap-6 h-full min-h-0 max-h-full">
         {/* Left Column - Language Cards */}
         <div className="flex-1 flex flex-col h-full min-h-0 max-h-full">
-          <div className="h-full space-y-3 overflow-y-auto pr-2 scrollbar-thin">
-            {languageData.map((lang) => (
+          {/* Sorting Buttons */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setSortBy("detections")}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                sortBy === "detections"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              Sort by Detections
+            </button>
+            <button
+              onClick={() => setSortBy("risk")}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                sortBy === "risk"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              Sort by Risk
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto pr-2 scrollbar-thin">
+            {sortedLanguageData.map((lang) => (
               <LanguageCard
                 key={lang.language}
                 language={lang}
@@ -263,7 +382,10 @@ const LanguageInsight: React.FC = () => {
         </div>
 
         {/* Right Column - Language Details */}
-        <LanguageDetailCard countryDetails={countryDetails} />
+        <LanguageDetailCard
+          countryDetails={countryDetails}
+          maxRiskDistributionValue={maxRiskDistributionValue}
+        />
       </div>
     </div>
   );

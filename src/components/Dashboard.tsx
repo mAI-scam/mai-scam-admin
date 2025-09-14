@@ -8,7 +8,8 @@ import {
   fetchDashboardDataFromAPI,
   checkDynamoDBConfiguration,
 } from "@/lib/dashboardApi";
-import { getLanguageDisplayName } from "@/data/constants";
+import { getLanguageDisplayName, getPossibleCountries } from "@/data/constants";
+import { LanguageInsight as ApiLanguageInsight } from "@/data/dummyDynamoDbData";
 import Overview from "@/screens/Overview";
 import DetectionLog from "@/screens/DetectionLog";
 import LanguageInsight from "@/screens/LanguageInsight";
@@ -32,6 +33,9 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const [selectedDetection, setSelectedDetection] = useState<
     DashboardData["recentDetections"][0] | null
   >(null);
+  const [analysisSource, setAnalysisSource] = useState<
+    "detections" | "blacklist"
+  >("detections");
 
   // Pagination states for server-side data
   const [pagination, setPagination] = useState<{
@@ -93,6 +97,10 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const [pageInput, setPageInput] = useState("1");
   const itemsPerPage = 10;
 
+  // Pre-calculated language insights state
+  const [processedLanguageInsights, setProcessedLanguageInsights] =
+    useState<any>(null);
+
   const loadDashboardData = React.useCallback(
     async (reset: boolean = true) => {
       if (!user) return;
@@ -131,6 +139,77 @@ const Dashboard: React.FC<DashboardProps> = () => {
         setDashboardData(data);
         setPagination(newPagination);
         setLanguageFilters(generateLanguageFilters(data));
+
+        // Pre-calculate language insights to avoid recalculation on navigation
+        if (data.languageInsights && data.languageInsights.length > 0) {
+          const totalDetections = data.languageInsights.reduce(
+            (sum: number, insight: ApiLanguageInsight) =>
+              sum + insight.detections,
+            0
+          );
+
+          const processedInsights = data.languageInsights.map(
+            (insight: ApiLanguageInsight) => {
+              const percentage = (insight.detections / totalDetections) * 100;
+
+              // Calculate risk level based on actual risk distribution within the language
+              const distribution = insight.riskDistribution || [
+                { level: "Low" as const, count: 0 },
+                { level: "Medium" as const, count: 0 },
+                { level: "High" as const, count: 0 },
+              ];
+
+              const totalDetectionsForLang = insight.detections;
+              if (totalDetectionsForLang === 0) {
+                return {
+                  ...insight,
+                  percentage: Math.round(percentage * 10) / 10,
+                  riskLevel: "Low" as const,
+                  possibleCountries: getPossibleCountries(insight.language),
+                };
+              }
+
+              const lowCount =
+                distribution.find((d) => d.level === "Low")?.count || 0;
+              const mediumCount =
+                distribution.find((d) => d.level === "Medium")?.count || 0;
+              const highCount =
+                distribution.find((d) => d.level === "High")?.count || 0;
+
+              const lowPercentage = (lowCount / totalDetectionsForLang) * 100;
+              const mediumPercentage =
+                (mediumCount / totalDetectionsForLang) * 100;
+              const highPercentage = (highCount / totalDetectionsForLang) * 100;
+
+              const weightedScore =
+                (highCount * 3 + mediumCount * 2 + lowCount * 1) /
+                totalDetectionsForLang;
+
+              let riskLevel: "High" | "Medium" | "Low";
+              if (highPercentage > 50) {
+                riskLevel = "High";
+              } else if (highPercentage > 30 || weightedScore > 2.2) {
+                riskLevel = "High";
+              } else if (
+                mediumPercentage + highPercentage > 40 ||
+                weightedScore > 1.8
+              ) {
+                riskLevel = "Medium";
+              } else {
+                riskLevel = "Low";
+              }
+
+              return {
+                ...insight,
+                percentage: Math.round(percentage * 10) / 10,
+                riskLevel,
+                possibleCountries: getPossibleCountries(insight.language),
+              };
+            }
+          );
+
+          setProcessedLanguageInsights(processedInsights);
+        }
       } catch (error) {
         console.error("Error loading dashboard data:", error);
         // Fallback to dummy data on error
@@ -139,6 +218,79 @@ const Dashboard: React.FC<DashboardProps> = () => {
         setAllDetections(fallbackData.recentDetections);
         setPagination(null);
         setLanguageFilters(generateLanguageFilters(fallbackData));
+
+        // Pre-calculate language insights for fallback data too
+        if (
+          fallbackData.languageInsights &&
+          fallbackData.languageInsights.length > 0
+        ) {
+          const totalDetections = fallbackData.languageInsights.reduce(
+            (sum: number, insight: ApiLanguageInsight) =>
+              sum + insight.detections,
+            0
+          );
+
+          const processedInsights = fallbackData.languageInsights.map(
+            (insight: ApiLanguageInsight) => {
+              const percentage = (insight.detections / totalDetections) * 100;
+
+              const distribution = insight.riskDistribution || [
+                { level: "Low" as const, count: 0 },
+                { level: "Medium" as const, count: 0 },
+                { level: "High" as const, count: 0 },
+              ];
+
+              const totalDetectionsForLang = insight.detections;
+              if (totalDetectionsForLang === 0) {
+                return {
+                  ...insight,
+                  percentage: Math.round(percentage * 10) / 10,
+                  riskLevel: "Low" as const,
+                  possibleCountries: getPossibleCountries(insight.language),
+                };
+              }
+
+              const lowCount =
+                distribution.find((d) => d.level === "Low")?.count || 0;
+              const mediumCount =
+                distribution.find((d) => d.level === "Medium")?.count || 0;
+              const highCount =
+                distribution.find((d) => d.level === "High")?.count || 0;
+
+              const lowPercentage = (lowCount / totalDetectionsForLang) * 100;
+              const mediumPercentage =
+                (mediumCount / totalDetectionsForLang) * 100;
+              const highPercentage = (highCount / totalDetectionsForLang) * 100;
+
+              const weightedScore =
+                (highCount * 3 + mediumCount * 2 + lowCount * 1) /
+                totalDetectionsForLang;
+
+              let riskLevel: "High" | "Medium" | "Low";
+              if (highPercentage > 50) {
+                riskLevel = "High";
+              } else if (highPercentage > 30 || weightedScore > 2.2) {
+                riskLevel = "High";
+              } else if (
+                mediumPercentage + highPercentage > 40 ||
+                weightedScore > 1.8
+              ) {
+                riskLevel = "Medium";
+              } else {
+                riskLevel = "Low";
+              }
+
+              return {
+                ...insight,
+                percentage: Math.round(percentage * 10) / 10,
+                riskLevel,
+                possibleCountries: getPossibleCountries(insight.language),
+              };
+            }
+          );
+
+          setProcessedLanguageInsights(processedInsights);
+        }
       } finally {
         setIsRefreshing(false);
       }
@@ -241,8 +393,16 @@ const Dashboard: React.FC<DashboardProps> = () => {
     setSelectedDetection(detection);
   };
 
+  const handleOpenAnalysisFromBlacklist = (
+    detection: DashboardData["recentDetections"][0]
+  ) => {
+    setSelectedDetection(detection);
+    setAnalysisSource("blacklist");
+  };
+
   const handleCloseAnalysis = () => {
     setSelectedDetection(null);
+    setAnalysisSource("detections");
   };
 
   const getSectionTitle = () => {
@@ -313,13 +473,19 @@ const Dashboard: React.FC<DashboardProps> = () => {
       isRefreshing,
     };
 
-    // Only show analysis screen when in detections section
-    if (activeSection === "detections" && selectedDetection) {
+    // Show analysis screen when selected detection exists
+    if (selectedDetection) {
+      const backButtonText =
+        analysisSource === "blacklist"
+          ? "Back to Blacklist"
+          : "Back to Detection Log";
+
       if (selectedDetection.content_type === "website") {
         return (
           <WebsiteAnalysis
             detection={selectedDetection}
             onBack={handleCloseAnalysis}
+            backButtonText={backButtonText}
           />
         );
       }
@@ -335,6 +501,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
         <SocialmediaAnalysis
           detection={selectedDetection}
           onBack={handleCloseAnalysis}
+          backButtonText={backButtonText}
         />
       );
     }
@@ -372,9 +539,18 @@ const Dashboard: React.FC<DashboardProps> = () => {
           />
         );
       case "language":
-        return <LanguageInsight />;
+        return (
+          <LanguageInsight
+            processedLanguageInsights={processedLanguageInsights}
+          />
+        );
       case "blacklist":
-        return <Blacklist data={dashboardData} />;
+        return (
+          <Blacklist
+            data={dashboardData}
+            onOpenAnalysis={handleOpenAnalysisFromBlacklist}
+          />
+        );
       default:
         return (
           <Overview

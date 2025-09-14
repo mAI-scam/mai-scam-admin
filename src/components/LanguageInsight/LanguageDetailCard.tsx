@@ -35,10 +35,12 @@ interface CountryDetails {
 
 interface LanguageDetailCardProps {
   countryDetails: CountryDetails | null;
+  maxRiskDistributionValue?: number;
 }
 
 const LanguageDetailCard: React.FC<LanguageDetailCardProps> = ({
   countryDetails,
+  maxRiskDistributionValue = 100,
 }) => {
   // Use actual risk distribution data from the props
   const getRiskDistribution = () => {
@@ -226,6 +228,7 @@ const LanguageDetailCard: React.FC<LanguageDetailCardProps> = ({
                     scales: {
                       y: {
                         beginAtZero: true,
+                        max: maxRiskDistributionValue,
                         grid: {
                           color: "rgba(0, 0, 0, 0.1)",
                         },
@@ -234,6 +237,7 @@ const LanguageDetailCard: React.FC<LanguageDetailCardProps> = ({
                           font: {
                             size: 10,
                           },
+                          stepSize: Math.ceil(maxRiskDistributionValue / 5), // 5 tick marks
                         },
                       },
                       x: {

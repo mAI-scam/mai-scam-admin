@@ -9,11 +9,13 @@ import AnalysisCard from "@/components/Analysis/AnalysisCard";
 interface SocialmediaAnalysisProps {
   detection: ScamDetection;
   onBack: () => void;
+  backButtonText?: string;
 }
 
 const SocialmediaAnalysis: React.FC<SocialmediaAnalysisProps> = ({
   detection,
   onBack,
+  backButtonText = "Back to Detection Log",
 }) => {
   return (
     <div className="h-full flex flex-col">
@@ -35,7 +37,7 @@ const SocialmediaAnalysis: React.FC<SocialmediaAnalysisProps> = ({
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Detection Log
+          {backButtonText}
         </button>
         <ModelAttribution />
       </div>
