@@ -1,11 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  getCountryInfo,
-  getRiskColor,
-  getRiskTextColor,
-} from "@/data/constants";
+import { getRiskColor, getRiskTextColor } from "@/data/constants";
 
 interface LanguageData {
   language: string;

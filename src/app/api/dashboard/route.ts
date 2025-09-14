@@ -96,7 +96,7 @@ const isDynamoDBConfigured = (): boolean => {
 // Fetch scam detections from DynamoDB with pagination support
 const fetchScamDetectionsFromDynamoDB = async (
   limit: number = 100,
-  lastEvaluatedKey?: Record<string, any>
+  lastEvaluatedKey?: Record<string, unknown>
 ) => {
   if (!docClient) {
     throw new Error("DynamoDB client not configured");
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
     const lastEvaluatedKey = searchParams.get("lastEvaluatedKey");
 
     // Parse lastEvaluatedKey if provided
-    let parsedLastEvaluatedKey: Record<string, any> | undefined;
+    let parsedLastEvaluatedKey: Record<string, unknown> | undefined;
     if (lastEvaluatedKey) {
       try {
         parsedLastEvaluatedKey = JSON.parse(

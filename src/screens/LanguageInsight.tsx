@@ -25,8 +25,18 @@ interface CountryDetails {
   riskDistribution: { level: "Low" | "Medium" | "High"; count: number }[];
 }
 
+interface ProcessedLanguageInsight {
+  language: string;
+  detections: number;
+  percentage: number;
+  riskLevel: "High" | "Medium" | "Low";
+  possibleCountries: string[];
+  riskDistribution?: { level: "Low" | "Medium" | "High"; count: number }[];
+  topContentTypes?: { type: string; count: number }[];
+}
+
 interface LanguageInsightProps {
-  processedLanguageInsights?: any[] | null;
+  processedLanguageInsights?: ProcessedLanguageInsight[] | null;
 }
 
 const LanguageInsight: React.FC<LanguageInsightProps> = ({
@@ -162,17 +172,21 @@ const LanguageInsight: React.FC<LanguageInsightProps> = ({
           console.log("📊 Using pre-calculated language insights");
 
           // Store original insights for content type access
-          setOriginalLanguageInsights(processedLanguageInsights);
+          setOriginalLanguageInsights(
+            processedLanguageInsights as unknown as ApiLanguageInsight[]
+          );
 
           // Convert to our format
           const processedLanguageData: LanguageData[] =
-            processedLanguageInsights.map((insight: any) => ({
-              language: insight.language,
-              count: insight.detections,
-              percentage: insight.percentage,
-              riskLevel: insight.riskLevel,
-              possibleCountries: insight.possibleCountries,
-            }));
+            processedLanguageInsights.map(
+              (insight: ProcessedLanguageInsight) => ({
+                language: insight.language,
+                count: insight.detections,
+                percentage: insight.percentage,
+                riskLevel: insight.riskLevel,
+                possibleCountries: insight.possibleCountries,
+              })
+            );
 
           console.log(
             "📈 Language data from pre-calculated insights:",
@@ -185,9 +199,9 @@ const LanguageInsight: React.FC<LanguageInsightProps> = ({
           if (processedLanguageData.length > 0) {
             setSelectedLanguage(processedLanguageData[0]);
             const firstLanguageInsight = processedLanguageInsights.find(
-              (insight: any) =>
+              (insight: ProcessedLanguageInsight) =>
                 insight.language === processedLanguageData[0].language
-            );
+            ) as ApiLanguageInsight | undefined;
             setCountryDetails({
               name: processedLanguageData[0].possibleCountries[0],
               language: processedLanguageData[0].language,

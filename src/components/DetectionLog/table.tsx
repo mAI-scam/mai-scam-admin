@@ -36,7 +36,7 @@ interface DetectionTableProps {
   onRowClick?: (detection: DashboardData["recentDetections"][0]) => void;
   pagination?: {
     hasMore: boolean;
-    lastEvaluatedKey?: Record<string, any>;
+    lastEvaluatedKey?: Record<string, unknown>;
     scannedCount: number;
     count: number;
   } | null;

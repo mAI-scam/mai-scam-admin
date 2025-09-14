@@ -10,7 +10,7 @@ interface DashboardApiResponse {
   recordCount?: number;
   pagination?: {
     hasMore: boolean;
-    lastEvaluatedKey?: Record<string, any>;
+    lastEvaluatedKey?: Record<string, unknown>;
     scannedCount: number;
     count: number;
   };
@@ -31,7 +31,7 @@ export const checkDynamoDBConfiguration = async (): Promise<boolean> => {
 export const fetchDashboardDataFromAPI = async (
   page: number = 1,
   limit: number = 100,
-  lastEvaluatedKey?: Record<string, any>
+  lastEvaluatedKey?: Record<string, unknown>
 ): Promise<{
   data: DashboardData | null;
   pagination?: DashboardApiResponse["pagination"];

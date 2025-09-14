@@ -134,18 +134,11 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
 
   // Handle social media image click
   const handleImageClick = (detectionId: string) => {
-    console.log("🖼️ Image clicked, detection ID:", detectionId);
-    if (!onOpenAnalysis) {
-      console.log("❌ No onOpenAnalysis handler");
-      return;
-    }
+    if (!onOpenAnalysis) return;
 
     const detection = findDetectionByDetectionId(detectionId);
-    console.log("🔍 Found detection:", detection);
     if (detection) {
       onOpenAnalysis(detection);
-    } else {
-      console.log("❌ No detection found for ID:", detectionId);
     }
   };
 
@@ -185,7 +178,7 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {sortedWebsites.map((website, index) => (
+              {sortedWebsites.map((website) => (
                 <button
                   key={website.url}
                   onClick={() => handleWebsiteClick(website.url)}
@@ -322,14 +315,9 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
               <div
                 className="relative w-full h-full rounded-lg overflow-hidden shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => {
-                  console.log("🖱️ Image container clicked");
                   const currentImage = allImages[currentImageIndex];
-                  console.log("📸 Current image:", currentImage);
-                  console.log("🔗 onOpenAnalysis available:", !!onOpenAnalysis);
                   if (currentImage?.detection_id && onOpenAnalysis) {
                     handleImageClick(currentImage.detection_id);
-                  } else {
-                    console.log("❌ Missing detection_id or onOpenAnalysis");
                   }
                 }}
               >

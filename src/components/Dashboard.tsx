@@ -40,7 +40,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
   // Pagination states for server-side data
   const [pagination, setPagination] = useState<{
     hasMore: boolean;
-    lastEvaluatedKey?: Record<string, any>;
+    lastEvaluatedKey?: Record<string, unknown>;
     scannedCount: number;
     count: number;
   } | null>(null);
@@ -98,8 +98,21 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const itemsPerPage = 10;
 
   // Pre-calculated language insights state
-  const [processedLanguageInsights, setProcessedLanguageInsights] =
-    useState<any>(null);
+  const [processedLanguageInsights, setProcessedLanguageInsights] = useState<
+    | {
+        language: string;
+        detections: number;
+        percentage: number;
+        riskLevel: "High" | "Medium" | "Low";
+        possibleCountries: string[];
+        riskDistribution?: {
+          level: "Low" | "Medium" | "High";
+          count: number;
+        }[];
+        topContentTypes?: { type: string; count: number }[];
+      }[]
+    | null
+  >(null);
 
   const loadDashboardData = React.useCallback(
     async (reset: boolean = true) => {
@@ -108,7 +121,12 @@ const Dashboard: React.FC<DashboardProps> = () => {
       try {
         setIsRefreshing(true);
         let data: DashboardData;
-        let newPagination: any = null;
+        let newPagination: {
+          hasMore: boolean;
+          lastEvaluatedKey?: Record<string, unknown>;
+          scannedCount: number;
+          count: number;
+        } | null = null;
 
         if (
           user.authType === "google" &&
@@ -116,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
         ) {
           const result = await fetchDashboardDataFromAPI(1, 100);
           data = result.data || (await getDummyData());
-          newPagination = result.pagination;
+          newPagination = result.pagination || null;
 
           // If we have pagination info, store all detections separately
           if (result.pagination && result.data) {
@@ -176,7 +194,6 @@ const Dashboard: React.FC<DashboardProps> = () => {
               const highCount =
                 distribution.find((d) => d.level === "High")?.count || 0;
 
-              const lowPercentage = (lowCount / totalDetectionsForLang) * 100;
               const mediumPercentage =
                 (mediumCount / totalDetectionsForLang) * 100;
               const highPercentage = (highCount / totalDetectionsForLang) * 100;
@@ -257,7 +274,6 @@ const Dashboard: React.FC<DashboardProps> = () => {
               const highCount =
                 distribution.find((d) => d.level === "High")?.count || 0;
 
-              const lowPercentage = (lowCount / totalDetectionsForLang) * 100;
               const mediumPercentage =
                 (mediumCount / totalDetectionsForLang) * 100;
               const highPercentage = (highCount / totalDetectionsForLang) * 100;
