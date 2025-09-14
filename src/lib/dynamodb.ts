@@ -63,52 +63,80 @@ interface DynamoScamDetection {
   [key: string]: unknown; // Allow any additional fields from NoSQL
 }
 
-// Fetch scam detections from DynamoDB
-export const fetchScamDetectionsFromDynamoDB = async () => {
+// Fetch scam detections from DynamoDB with pagination support
+export const fetchScamDetectionsFromDynamoDB = async (
+  limit: number = 100,
+  lastEvaluatedKey?: Record<string, any>
+) => {
   try {
     const command = new ScanCommand({
       TableName: SCAM_DETECTION_TABLE,
-      Limit: 100, // Get recent detections
+      Limit: limit,
       FilterExpression: "attribute_exists(analysis_result)", // Ensure complete records
+      ExclusiveStartKey: lastEvaluatedKey, // For pagination
     });
 
     const response = await docClient.send(command);
-    return (response.Items as DynamoScamDetection[]) || [];
+    return {
+      items: (response.Items as DynamoScamDetection[]) || [],
+      lastEvaluatedKey: response.LastEvaluatedKey,
+      count: response.Count || 0,
+      scannedCount: response.ScannedCount || 0,
+    };
   } catch (error) {
     console.error("Error fetching scam detections from DynamoDB:", error);
-    return [];
+    return {
+      items: [],
+      lastEvaluatedKey: undefined,
+      count: 0,
+      scannedCount: 0,
+    };
   }
 };
 
 // Note: Country extraction logic moved to scamDataProcessor.ts for reusability
 
-// Main function to fetch all dashboard data from DynamoDB
-export const fetchDashboardDataFromDynamoDB =
-  async (): Promise<DashboardData | null> => {
-    try {
-      console.log("Fetching scam detection data from DynamoDB...");
+// Main function to fetch all dashboard data from DynamoDB with pagination
+export const fetchDashboardDataFromDynamoDB = async (
+  limit: number = 100,
+  lastEvaluatedKey?: Record<string, any>
+): Promise<{ data: DashboardData | null; pagination?: any }> => {
+  try {
+    console.log("Fetching scam detection data from DynamoDB...");
 
-      // Fetch raw scam detections from DynamoDB
-      const rawScamDetections = await fetchScamDetectionsFromDynamoDB();
+    // Fetch raw scam detections from DynamoDB
+    const result = await fetchScamDetectionsFromDynamoDB(
+      limit,
+      lastEvaluatedKey
+    );
 
-      // If we don't have any data, return null to trigger fallback
-      if (!rawScamDetections.length) {
-        console.log("No scam detection data found in DynamoDB");
-        return null;
-      }
-
-      // Use the shared processing utility to transform the data
-      const processedData = processScamData(rawScamDetections);
-
-      console.log(
-        `Successfully fetched and processed ${rawScamDetections.length} scam detection records from DynamoDB`
-      );
-      return processedData;
-    } catch (error) {
-      console.error("Error fetching dashboard data from DynamoDB:", error);
-      return null;
+    // If we don't have any data, return null to trigger fallback
+    if (!result.items.length) {
+      console.log("No scam detection data found in DynamoDB");
+      return { data: null };
     }
-  };
+
+    // Use the shared processing utility to transform the data
+    const processedData = processScamData(result.items);
+
+    console.log(
+      `Successfully fetched and processed ${result.items.length} scam detection records from DynamoDB`
+    );
+
+    return {
+      data: processedData,
+      pagination: {
+        hasMore: !!result.lastEvaluatedKey,
+        lastEvaluatedKey: result.lastEvaluatedKey,
+        scannedCount: result.scannedCount,
+        count: result.count,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching dashboard data from DynamoDB:", error);
+    return { data: null };
+  }
+};
 
 // Helper function to check if DynamoDB is properly configured
 export const isDynamoDBConfigured = (): boolean => {

@@ -7,6 +7,8 @@ import {
   getContentTypeDisplayName,
 } from "@/data/constants";
 
+// Updated interface with pagination support
+
 interface DetectionTableProps {
   data: DashboardData;
   typeFilters: { website: boolean; email: boolean; socialmedia: boolean };
@@ -32,6 +34,15 @@ interface DetectionTableProps {
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
   onRowClick?: (detection: DashboardData["recentDetections"][0]) => void;
+  pagination?: {
+    hasMore: boolean;
+    lastEvaluatedKey?: Record<string, any>;
+    scannedCount: number;
+    count: number;
+  } | null;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  loadMoreError?: string | null;
 }
 
 const DetectionTable: React.FC<DetectionTableProps> = ({
@@ -49,6 +60,10 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
   itemsPerPage,
   getLanguageDisplayName,
   onRowClick,
+  pagination,
+  isLoadingMore,
+  onLoadMore,
+  loadMoreError,
 }) => {
   // Sorting states
   const [dateSortOrder, setDateSortOrder] = useState<"asc" | "desc">("desc");
@@ -646,6 +661,11 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                 Showing {startIndex + 1} to{" "}
                 {Math.min(endIndex, filteredAndSortedDetections.length)} of{" "}
                 {filteredAndSortedDetections.length} detections
+                {pagination && (
+                  <span className="ml-2 text-blue-600 dark:text-blue-400">
+                    (Total scanned: {pagination.scannedCount})
+                  </span>
+                )}
               </span>
             </div>
 
@@ -686,6 +706,31 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
               >
                 Next
               </button>
+
+              {/* Load More Button for Server-side Pagination */}
+              {pagination?.hasMore && onLoadMore && (
+                <button
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md transition-colors"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1 inline-block"></div>
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </button>
+              )}
+
+              {/* Error Message */}
+              {loadMoreError && (
+                <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                  {loadMoreError}
+                </div>
+              )}
             </div>
           </div>
         </div>

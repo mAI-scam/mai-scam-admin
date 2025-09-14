@@ -199,6 +199,7 @@ export const calculateLanguageInsights = (
       detections: number;
       highRisk: number;
       contentTypes: Map<string, number>;
+      riskLevels: Map<string, number>;
     }
   >();
 
@@ -209,6 +210,7 @@ export const calculateLanguageInsights = (
         detections: 0,
         highRisk: 0,
         contentTypes: new Map(),
+        riskLevels: new Map(),
       });
     }
     const data = languageMap.get(langCode);
@@ -223,22 +225,36 @@ export const calculateLanguageInsights = (
       // Track content types
       const currentCount = data.contentTypes.get(detection.content_type) || 0;
       data.contentTypes.set(detection.content_type, currentCount + 1);
+
+      // Track risk levels
+      const currentRiskCount = data.riskLevels.get(detection.risk_level) || 0;
+      data.riskLevels.set(detection.risk_level, currentRiskCount + 1);
     }
   });
 
   return Array.from(languageMap.entries())
-    .map(([langCode, data]) => ({
-      language: getLanguageDisplayName(langCode),
-      languageCode: langCode,
-      detections: data.detections,
-      highRisk: data.highRisk,
-      topContentTypes: Array.from(data.contentTypes.entries())
-        .map(([type, count]) => ({ type, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3),
-      trend: Math.random() > 0.5 ? "up" : ("down" as "up" | "down"),
-      trendPercentage: `${Math.floor(Math.random() * 20) + 5}%`,
-    }))
+    .map(([langCode, data]) => {
+      // Calculate risk distribution
+      const riskDistribution = [
+        { level: "Low" as const, count: data.riskLevels.get("Low") || 0 },
+        { level: "Medium" as const, count: data.riskLevels.get("Medium") || 0 },
+        { level: "High" as const, count: data.riskLevels.get("High") || 0 },
+      ];
+
+      return {
+        language: getLanguageDisplayName(langCode),
+        languageCode: langCode,
+        detections: data.detections,
+        highRisk: data.highRisk,
+        topContentTypes: Array.from(data.contentTypes.entries())
+          .map(([type, count]) => ({ type, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3),
+        trend: Math.random() > 0.5 ? "up" : ("down" as "up" | "down"),
+        trendPercentage: `${Math.floor(Math.random() * 20) + 5}%`,
+        riskDistribution,
+      };
+    })
     .sort((a, b) => b.detections - a.detections)
     .slice(0, 8); // Top 8 languages
 };

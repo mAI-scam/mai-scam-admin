@@ -33,6 +33,19 @@ const Dashboard: React.FC<DashboardProps> = () => {
     DashboardData["recentDetections"][0] | null
   >(null);
 
+  // Pagination states for server-side data
+  const [pagination, setPagination] = useState<{
+    hasMore: boolean;
+    lastEvaluatedKey?: Record<string, any>;
+    scannedCount: number;
+    count: number;
+  } | null>(null);
+  const [allDetections, setAllDetections] = useState<
+    DashboardData["recentDetections"]
+  >([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+
   // Filter states for detections
   const [typeFilters, setTypeFilters] = useState({
     website: true,
@@ -80,32 +93,91 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const [pageInput, setPageInput] = useState("1");
   const itemsPerPage = 10;
 
-  const loadDashboardData = React.useCallback(async () => {
-    if (!user) return;
+  const loadDashboardData = React.useCallback(
+    async (reset: boolean = true) => {
+      if (!user) return;
+
+      try {
+        setIsRefreshing(true);
+        let data: DashboardData;
+        let newPagination: any = null;
+
+        if (
+          user.authType === "google" &&
+          (await checkDynamoDBConfiguration())
+        ) {
+          const result = await fetchDashboardDataFromAPI(1, 100);
+          data = result.data || (await getDummyData());
+          newPagination = result.pagination;
+
+          // If we have pagination info, store all detections separately
+          if (result.pagination && result.data) {
+            if (reset) {
+              setAllDetections(result.data.recentDetections);
+            } else {
+              setAllDetections((prev) => [
+                ...prev,
+                ...result.data!.recentDetections,
+              ]);
+            }
+          }
+        } else {
+          data = await getDummyData();
+          if (reset) {
+            setAllDetections(data.recentDetections);
+          }
+        }
+
+        setDashboardData(data);
+        setPagination(newPagination);
+        setLanguageFilters(generateLanguageFilters(data));
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        // Fallback to dummy data on error
+        const fallbackData = await getDummyData();
+        setDashboardData(fallbackData);
+        setAllDetections(fallbackData.recentDetections);
+        setPagination(null);
+        setLanguageFilters(generateLanguageFilters(fallbackData));
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [user]
+  );
+
+  const loadMoreData = React.useCallback(async () => {
+    if (!user || !pagination?.hasMore || isLoadingMore) return;
 
     try {
-      setIsRefreshing(true);
-      let data: DashboardData;
+      setIsLoadingMore(true);
+      setLoadMoreError(null);
+      const result = await fetchDashboardDataFromAPI(
+        1,
+        100,
+        pagination.lastEvaluatedKey
+      );
 
-      if (user.authType === "google" && (await checkDynamoDBConfiguration())) {
-        const apiData = await fetchDashboardDataFromAPI();
-        data = apiData || (await getDummyData());
+      if (result.data && result.pagination) {
+        setAllDetections((prev) => [...prev, ...result.data!.recentDetections]);
+        setPagination(result.pagination);
+
+        // Update dashboard data with all detections
+        const updatedData = {
+          ...dashboardData!,
+          recentDetections: [...allDetections, ...result.data.recentDetections],
+        };
+        setDashboardData(updatedData);
       } else {
-        data = await getDummyData();
+        setLoadMoreError("No more data available or failed to load more data");
       }
-
-      setDashboardData(data);
-      setLanguageFilters(generateLanguageFilters(data));
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      // Fallback to dummy data on error
-      const fallbackData = await getDummyData();
-      setDashboardData(fallbackData);
-      setLanguageFilters(generateLanguageFilters(fallbackData));
+      console.error("Error loading more data:", error);
+      setLoadMoreError("Failed to load more data. Please try again.");
     } finally {
-      setIsRefreshing(false);
+      setIsLoadingMore(false);
     }
-  }, [user]);
+  }, [user, pagination, isLoadingMore, dashboardData, allDetections]);
 
   useEffect(() => {
     loadDashboardData();
@@ -160,7 +232,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
   };
 
   const handleRefresh = () => {
-    loadDashboardData();
+    loadDashboardData(true);
   };
 
   const handleOpenAnalysis = (
@@ -185,6 +257,33 @@ const Dashboard: React.FC<DashboardProps> = () => {
         return "Blacklist";
       default:
         return "Overview";
+    }
+  };
+
+  const getSectionInfo = () => {
+    switch (activeSection) {
+      case "detections":
+        return (
+          <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-sm rounded-full max-w-xs">
+            A comprehensive list of all detections, with built-in filter
+            function
+          </div>
+        );
+      case "language":
+        return (
+          <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-sm rounded-full max-w-xs">
+            A weighted score between 1 (min.) to 3 (max.) to flag cyber threat
+            trends across languages.
+          </div>
+        );
+      case "blacklist":
+        return (
+          <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-sm rounded-full max-w-xs">
+            A glance of detected high-risk website URLs and social media images
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -265,6 +364,11 @@ const Dashboard: React.FC<DashboardProps> = () => {
             itemsPerPage={itemsPerPage}
             getLanguageDisplayName={getLanguageDisplayName}
             onOpenAnalysis={handleOpenAnalysis}
+            pagination={pagination}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMoreData}
+            allDetections={allDetections}
+            loadMoreError={loadMoreError}
           />
         );
       case "language":
@@ -425,11 +529,14 @@ const Dashboard: React.FC<DashboardProps> = () => {
                   />
                 </svg>
               </button>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {getSectionTitle()}
-              </h1>
+              <div className="flex items-center space-x-6">
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap w-48">
+                  {getSectionTitle()}
+                </h1>
+                {getSectionInfo()}
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
@@ -459,19 +566,17 @@ const Dashboard: React.FC<DashboardProps> = () => {
                   </>
                 )}
               </button>
-              <div className="flex items-center space-x-2">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    getDataSource() === "dynamodb"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                  }`}
-                >
-                  {getDataSource() === "dynamodb"
-                    ? "🔴 Live Data"
-                    : "🧪 Test Data"}
-                </span>
-              </div>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  getDataSource() === "dynamodb"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                }`}
+              >
+                {getDataSource() === "dynamodb"
+                  ? "🔴 Live Data"
+                  : "🧪 Test Data"}
+              </span>
             </div>
           </div>
         </header>

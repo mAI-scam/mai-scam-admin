@@ -36,6 +36,7 @@ export interface LanguageInsight {
   topContentTypes: Array<{ type: string; count: number }>;
   trend: "up" | "down" | "stable";
   trendPercentage: string;
+  riskDistribution: { level: "Low" | "Medium" | "High"; count: number }[];
 }
 
 export interface ThreatTrend {

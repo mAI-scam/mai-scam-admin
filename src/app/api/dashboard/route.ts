@@ -93,8 +93,11 @@ const isDynamoDBConfigured = (): boolean => {
   );
 };
 
-// Fetch scam detections from DynamoDB
-const fetchScamDetectionsFromDynamoDB = async () => {
+// Fetch scam detections from DynamoDB with pagination support
+const fetchScamDetectionsFromDynamoDB = async (
+  limit: number = 100,
+  lastEvaluatedKey?: Record<string, any>
+) => {
   if (!docClient) {
     throw new Error("DynamoDB client not configured");
   }
@@ -102,22 +105,50 @@ const fetchScamDetectionsFromDynamoDB = async () => {
   try {
     const command = new ScanCommand({
       TableName: SCAM_DETECTION_TABLE,
-      Limit: 100, // Get recent detections
+      Limit: limit,
       FilterExpression: "attribute_exists(analysis_result)", // Ensure complete records
+      ExclusiveStartKey: lastEvaluatedKey, // For pagination
     });
 
     const response = await docClient.send(command);
-    return (response.Items as DynamoScamDetection[]) || [];
+    return {
+      items: (response.Items as DynamoScamDetection[]) || [],
+      lastEvaluatedKey: response.LastEvaluatedKey,
+      count: response.Count || 0,
+      scannedCount: response.ScannedCount || 0,
+    };
   } catch (error) {
     console.error("Error fetching scam detections from DynamoDB:", error);
     throw error;
   }
 };
 
-// API endpoint to get dashboard data
-export async function GET() {
+// API endpoint to get dashboard data with pagination support
+// Query parameters:
+// - page: Page number (default: 1)
+// - limit: Number of items per page (default: 100)
+// - lastEvaluatedKey: DynamoDB pagination token (optional)
+export async function GET(request: Request) {
   try {
     console.log("📊 Dashboard API endpoint called");
+
+    // Parse query parameters for pagination
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "100");
+    const lastEvaluatedKey = searchParams.get("lastEvaluatedKey");
+
+    // Parse lastEvaluatedKey if provided
+    let parsedLastEvaluatedKey: Record<string, any> | undefined;
+    if (lastEvaluatedKey) {
+      try {
+        parsedLastEvaluatedKey = JSON.parse(
+          decodeURIComponent(lastEvaluatedKey)
+        );
+      } catch (error) {
+        console.warn("Invalid lastEvaluatedKey parameter:", error);
+      }
+    }
 
     // Check if DynamoDB is configured
     if (!isDynamoDBConfigured()) {
@@ -134,13 +165,18 @@ export async function GET() {
       );
     }
 
-    console.log("✅ DynamoDB is configured, fetching data...");
+    console.log(
+      `✅ DynamoDB is configured, fetching data (page: ${page}, limit: ${limit})...`
+    );
 
-    // Fetch raw scam detections from DynamoDB
-    const rawScamDetections = await fetchScamDetectionsFromDynamoDB();
+    // Fetch raw scam detections from DynamoDB with pagination
+    const result = await fetchScamDetectionsFromDynamoDB(
+      limit,
+      parsedLastEvaluatedKey
+    );
 
     // If we don't have any data, return empty result
-    if (!rawScamDetections.length) {
+    if (!result.items.length) {
       console.log("⚠️ No scam detection data found in DynamoDB");
       return NextResponse.json(
         {
@@ -154,17 +190,23 @@ export async function GET() {
     }
 
     // Use the shared processing utility to transform the data
-    const processedData = processScamData(rawScamDetections);
+    const processedData = processScamData(result.items);
 
     console.log(
-      `✅ Successfully fetched and processed ${rawScamDetections.length} scam detection records from DynamoDB`
+      `✅ Successfully fetched and processed ${result.items.length} scam detection records from DynamoDB (scanned: ${result.scannedCount})`
     );
 
     return NextResponse.json({
       success: true,
       data: processedData,
       configured: true,
-      recordCount: rawScamDetections.length,
+      recordCount: result.items.length,
+      pagination: {
+        hasMore: !!result.lastEvaluatedKey,
+        lastEvaluatedKey: result.lastEvaluatedKey,
+        scannedCount: result.scannedCount,
+        count: result.count,
+      },
     });
   } catch (error) {
     console.error("❌ Error in dashboard API:", error);

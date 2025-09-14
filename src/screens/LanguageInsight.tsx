@@ -38,29 +38,79 @@ const LanguageInsight: React.FC = () => {
     null
   );
 
-  // Generate risk distribution data (mock data for now)
-  const generateRiskDistribution = (
-    totalDetections: number,
-    riskLevel: "High" | "Medium" | "Low"
-  ) => {
-    const distributions = {
-      High: [
-        { level: "Low" as const, count: Math.floor(totalDetections * 0.2) },
-        { level: "Medium" as const, count: Math.floor(totalDetections * 0.3) },
-        { level: "High" as const, count: Math.floor(totalDetections * 0.5) },
-      ],
-      Medium: [
-        { level: "Low" as const, count: Math.floor(totalDetections * 0.4) },
-        { level: "Medium" as const, count: Math.floor(totalDetections * 0.5) },
-        { level: "High" as const, count: Math.floor(totalDetections * 0.1) },
-      ],
-      Low: [
-        { level: "Low" as const, count: Math.floor(totalDetections * 0.6) },
-        { level: "Medium" as const, count: Math.floor(totalDetections * 0.3) },
-        { level: "High" as const, count: Math.floor(totalDetections * 0.1) },
-      ],
-    };
-    return distributions[riskLevel];
+  // Calculate language risk level based on actual risk distribution
+  const calculateLanguageRiskLevel = (
+    insight: ApiLanguageInsight
+  ): "High" | "Medium" | "Low" => {
+    const distribution = insight.riskDistribution || [
+      { level: "Low" as const, count: 0 },
+      { level: "Medium" as const, count: 0 },
+      { level: "High" as const, count: 0 },
+    ];
+
+    const totalDetections = insight.detections;
+    if (totalDetections === 0) return "Low";
+
+    // Get counts for each risk level
+    const lowCount = distribution.find((d) => d.level === "Low")?.count || 0;
+    const mediumCount =
+      distribution.find((d) => d.level === "Medium")?.count || 0;
+    const highCount = distribution.find((d) => d.level === "High")?.count || 0;
+
+    // Calculate percentages
+    const lowPercentage = (lowCount / totalDetections) * 100;
+    const mediumPercentage = (mediumCount / totalDetections) * 100;
+    const highPercentage = (highCount / totalDetections) * 100;
+
+    // Calculate weighted risk score (High=3, Medium=2, Low=1)
+    const weightedScore =
+      (highCount * 3 + mediumCount * 2 + lowCount * 1) / totalDetections;
+
+    console.log(`🎯 Risk Assessment for ${insight.language}:`, {
+      totalDetections,
+      distribution: { lowCount, mediumCount, highCount },
+      percentages: { lowPercentage, mediumPercentage, highPercentage },
+      weightedScore,
+    });
+
+    // Risk level determination based on multiple factors:
+    // 1. If >50% are High risk detections → High
+    // 2. If >30% are High risk OR weighted score >2.2 → High
+    // 3. If >40% are Medium+High risk OR weighted score >1.8 → Medium
+    // 4. Otherwise → Low
+
+    if (highPercentage > 50) {
+      return "High";
+    } else if (highPercentage > 30 || weightedScore > 2.2) {
+      return "High";
+    } else if (mediumPercentage + highPercentage > 40 || weightedScore > 1.8) {
+      return "Medium";
+    } else {
+      return "Low";
+    }
+  };
+
+  // Get actual risk distribution data from the language insight
+  const getRiskDistribution = (languageInsight: ApiLanguageInsight) => {
+    const distribution = languageInsight.riskDistribution || [
+      { level: "Low" as const, count: 0 },
+      { level: "Medium" as const, count: 0 },
+      { level: "High" as const, count: 0 },
+    ];
+
+    // Debug: Log the risk distribution to verify it matches total detections
+    const totalFromDistribution = distribution.reduce(
+      (sum, item) => sum + item.count,
+      0
+    );
+    console.log(`🔍 Risk Distribution for ${languageInsight.language}:`, {
+      distribution,
+      totalFromDistribution,
+      totalDetections: languageInsight.detections,
+      matches: totalFromDistribution === languageInsight.detections,
+    });
+
+    return distribution;
   };
 
   useEffect(() => {
@@ -104,9 +154,8 @@ const LanguageInsight: React.FC = () => {
           (insight: ApiLanguageInsight) => {
             const percentage = (insight.detections / totalDetections) * 100;
 
-            let riskLevel: "High" | "Medium" | "Low" = "Low";
-            if (percentage >= 30) riskLevel = "High";
-            else if (percentage >= 15) riskLevel = "Medium";
+            // Calculate risk level based on actual risk distribution within the language
+            const riskLevel = calculateLanguageRiskLevel(insight);
 
             return {
               language: insight.language,
@@ -125,6 +174,10 @@ const LanguageInsight: React.FC = () => {
         // Set the language with most detections as default active
         if (processedLanguageData.length > 0) {
           setSelectedLanguage(processedLanguageData[0]);
+          const firstLanguageInsight = languageInsights.find(
+            (insight: ApiLanguageInsight) =>
+              insight.language === processedLanguageData[0].language
+          );
           setCountryDetails({
             name: processedLanguageData[0].possibleCountries[0],
             language: processedLanguageData[0].language,
@@ -132,15 +185,14 @@ const LanguageInsight: React.FC = () => {
             percentage: processedLanguageData[0].percentage,
             riskLevel: processedLanguageData[0].riskLevel,
             possibleCountries: processedLanguageData[0].possibleCountries,
-            contentTypes:
-              languageInsights.find(
-                (insight: ApiLanguageInsight) =>
-                  insight.language === processedLanguageData[0].language
-              )?.topContentTypes || [],
-            riskDistribution: generateRiskDistribution(
-              processedLanguageData[0].count,
-              processedLanguageData[0].riskLevel
-            ),
+            contentTypes: firstLanguageInsight?.topContentTypes || [],
+            riskDistribution: firstLanguageInsight
+              ? getRiskDistribution(firstLanguageInsight)
+              : [
+                  { level: "Low" as const, count: 0 },
+                  { level: "Medium" as const, count: 0 },
+                  { level: "High" as const, count: 0 },
+                ],
           });
         }
 
@@ -157,7 +209,7 @@ const LanguageInsight: React.FC = () => {
   const handleLanguageClick = (language: LanguageData) => {
     setSelectedLanguage(language);
 
-    // Find the original insight data for content types
+    // Find the original insight data for content types and risk distribution
     const originalInsight = originalLanguageInsights.find(
       (insight: ApiLanguageInsight) => insight.language === language.language
     );
@@ -170,10 +222,13 @@ const LanguageInsight: React.FC = () => {
       riskLevel: language.riskLevel,
       possibleCountries: language.possibleCountries,
       contentTypes: originalInsight?.topContentTypes || [],
-      riskDistribution: generateRiskDistribution(
-        language.count,
-        language.riskLevel
-      ),
+      riskDistribution: originalInsight
+        ? getRiskDistribution(originalInsight)
+        : [
+            { level: "Low" as const, count: 0 },
+            { level: "Medium" as const, count: 0 },
+            { level: "High" as const, count: 0 },
+          ],
     });
   };
 

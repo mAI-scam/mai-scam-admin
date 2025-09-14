@@ -34,6 +34,16 @@ interface DetectionLogProps extends SectionProps {
   itemsPerPage: number;
   getLanguageDisplayName: (languageCode: string) => string;
   onOpenAnalysis?: (detection: DashboardData["recentDetections"][0]) => void;
+  pagination?: {
+    hasMore: boolean;
+    lastEvaluatedKey?: Record<string, any>;
+    scannedCount: number;
+    count: number;
+  } | null;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  allDetections?: DashboardData["recentDetections"];
+  loadMoreError?: string | null;
 }
 
 const DetectionLog: React.FC<DetectionLogProps> = ({
@@ -51,11 +61,26 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
   itemsPerPage,
   getLanguageDisplayName,
   onOpenAnalysis,
+  pagination,
+  isLoadingMore,
+  onLoadMore,
+  allDetections,
+  loadMoreError,
 }) => {
+  // Use allDetections if available (for paginated data), otherwise use data.recentDetections
+  const detectionsToUse =
+    allDetections && allDetections.length > 0
+      ? allDetections
+      : data.recentDetections;
+  const dataWithAllDetections = {
+    ...data,
+    recentDetections: detectionsToUse,
+  };
+
   return (
     <div className="h-full flex flex-col">
       <DetectionTable
-        data={data}
+        data={dataWithAllDetections}
         typeFilters={typeFilters}
         setTypeFilters={setTypeFilters}
         riskFilters={riskFilters}
@@ -69,6 +94,10 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
         itemsPerPage={itemsPerPage}
         getLanguageDisplayName={getLanguageDisplayName}
         onRowClick={onOpenAnalysis}
+        pagination={pagination}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={onLoadMore}
+        loadMoreError={loadMoreError}
       />
     </div>
   );

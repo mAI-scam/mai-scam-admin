@@ -59,27 +59,6 @@ const LanguageCard: React.FC<LanguageCardProps> = ({
         <span>{language.count} detections</span>
         <span>{language.percentage}% of total</span>
       </div>
-
-      <div className="mt-2">
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-          Possible Countries:
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {language.possibleCountries.slice(0, 3).map((country) => (
-            <span
-              key={country}
-              className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
-            >
-              {getCountryInfo(country).flag} {country}
-            </span>
-          ))}
-          {language.possibleCountries.length > 3 && (
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs">
-              +{language.possibleCountries.length - 3} more
-            </span>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
