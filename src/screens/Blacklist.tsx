@@ -156,9 +156,9 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex flex-col lg:flex-row">
       {/* Left Div - High Risk Website URLs */}
-      <div className="w-1/2 h-full flex flex-col border-r border-gray-300 dark:border-gray-600">
+      <div className="w-full lg:w-1/2 h-full flex flex-col border-b lg:border-b-0 lg:border-r border-gray-300 dark:border-gray-600">
         <div className="p-6 border-b border-gray-300 dark:border-gray-600">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             High Risk Website URLs
@@ -212,9 +212,9 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
       </div>
 
       {/* Right Div - High Risk Social Media Posts Carousel */}
-      <div className="w-1/2 h-full flex flex-col">
+      <div className="w-full lg:w-1/2 h-full flex flex-col">
         <div className="p-6 border-b border-gray-300 dark:border-gray-600">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 High Risk Social Media Posts
@@ -265,16 +265,16 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
               </p>
             </div>
           ) : (
-            <div className="relative w-full h-full max-w-2xl mx-auto max-h-[70vh]">
+            <div className="relative w-full h-full max-w-sm sm:max-w-md lg:max-w-2xl mx-auto max-h-[50vh] sm:max-h-[60vh] lg:max-h-[70vh]">
               {/* Left Navigation Button */}
               {allImages.length > 1 && (
                 <button
                   onClick={goToPrevious}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                  className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 sm:p-2 transition-colors"
                   aria-label="Previous image"
                 >
                   <svg
-                    className="w-6 h-6"
+                    className="w-4 h-4 sm:w-6 sm:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -293,11 +293,11 @@ const Blacklist: React.FC<BlacklistProps> = ({ data, onOpenAnalysis }) => {
               {allImages.length > 1 && (
                 <button
                   onClick={goToNext}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                  className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 sm:p-2 transition-colors"
                   aria-label="Next image"
                 >
                   <svg
-                    className="w-6 h-6"
+                    className="w-4 h-4 sm:w-6 sm:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

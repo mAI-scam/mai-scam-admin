@@ -8,8 +8,8 @@ interface AnalysisCardProps {
 
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ detection, title }) => {
   return (
-    <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col w-full lg:w-1/2">
+      <div className="flex items-start justify-between mb-4 flex-shrink-0">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {title}
@@ -32,7 +32,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ detection, title }) => {
         </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
             Analysis
@@ -50,6 +50,23 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ detection, title }) => {
             {detection.recommended_action}
           </p>
         </div>
+
+        {/* Website specific: Legitimate URL */}
+        {detection.content_type === "website" && detection.legitimate_url && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+              Legitimate URL
+            </h3>
+            <a
+              href={detection.legitimate_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-600 hover:underline break-all"
+            >
+              {detection.legitimate_url}
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );

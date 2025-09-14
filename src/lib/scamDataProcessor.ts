@@ -25,11 +25,58 @@ interface RawDetection {
   extracted_data?: {
     metadata?: {
       domain?: unknown;
+      description?: unknown;
+      title?: unknown;
+      content?: unknown;
+      ssl?: {
+        isSecure?: unknown;
+        protocol?: unknown;
+      };
       [key: string]: unknown;
     };
     signals?: {
       platform_meta?: {
         platform?: unknown;
+        post_url?: unknown;
+        author_username?: unknown;
+        author_followers_count?: unknown;
+        [key: string]: unknown;
+      };
+      metadata?: {
+        title?: unknown;
+        content?: unknown;
+        [key: string]: unknown;
+      };
+      domain_analysis?: {
+        full_domain?: unknown;
+        [key: string]: unknown;
+      };
+      content?: unknown;
+      ssl_security?: {
+        has_ssl?: unknown;
+        domain_age_days?: unknown;
+        ssl_expired?: unknown;
+        is_new_domain?: unknown;
+      };
+      artifacts?: {
+        hashtags?: unknown[];
+      };
+      engagement_metrics?: {
+        likes?: unknown;
+        comments?: unknown;
+        shares?: unknown;
+        reactions?: unknown;
+      };
+      [key: string]: unknown;
+    };
+    content_analysis?: {
+      title?: unknown;
+      content?: unknown;
+      [key: string]: unknown;
+    };
+    checker_results?: {
+      extraction?: {
+        urls?: unknown[];
         [key: string]: unknown;
       };
       [key: string]: unknown;
@@ -41,11 +88,30 @@ interface RawDetection {
       s3Key?: unknown;
       [key: string]: unknown;
     }>;
+    content?: unknown;
+    text?: unknown;
+    message?: unknown;
+    description?: unknown;
+    caption?: unknown;
     [key: string]: unknown;
   };
   url?: unknown;
   platform?: unknown;
   post_url?: unknown;
+  title?: unknown;
+  content?: unknown;
+  text?: unknown;
+  message?: unknown;
+  description?: unknown;
+  caption?: unknown;
+  author_username?: unknown;
+  author_followers_count?: unknown;
+  engagement_metrics?: {
+    likes?: unknown;
+    comments?: unknown;
+    shares?: unknown;
+    reactions?: unknown;
+  };
   [key: string]: unknown; // Allow any additional fields from NoSQL
 }
 
@@ -110,7 +176,12 @@ export const transformRawDetections = (
         ) ||
         safeString(detection.platform) ||
         undefined,
-      post_url: safeString(detection.post_url) || undefined,
+      post_url:
+        safeString(detection.post_url) ||
+        safeString(
+          detection.extracted_data?.signals?.platform_meta?.post_url
+        ) ||
+        undefined,
       images: Array.isArray(detection.extracted_data?.images)
         ? detection.extracted_data.images
             .filter((img) => img && (img.s3_url || img.s3Key || img.s3_key))
@@ -125,7 +196,164 @@ export const transformRawDetections = (
       recommended_action:
         safeString(detection.analysis_result?.recommended_action) ||
         "Review manually",
+      legitimate_url:
+        safeString(detection.analysis_result?.legitimate_url) || undefined,
       created_at: detection.created_at,
+      // Add the missing fields
+      title:
+        safeString(detection.title) ||
+        safeString(detection.extracted_data?.content_analysis?.title) ||
+        safeString(detection.extracted_data?.metadata?.title) ||
+        safeString(detection.extracted_data?.signals?.metadata?.title) ||
+        safeString(detection.extracted_data?.metadata?.domain) ||
+        safeString(detection.domain) ||
+        undefined,
+      content:
+        safeString(detection.content) ||
+        safeString(detection.extracted_data?.content) ||
+        safeString(detection.extracted_data?.content_analysis?.content) ||
+        safeString(detection.text) ||
+        safeString(detection.message) ||
+        safeString(detection.description) ||
+        safeString(detection.caption) ||
+        safeString(detection.extracted_data?.text) ||
+        safeString(detection.extracted_data?.message) ||
+        safeString(detection.extracted_data?.description) ||
+        safeString(detection.extracted_data?.caption) ||
+        safeString(detection.extracted_data?.metadata?.content) ||
+        safeString(detection.extracted_data?.signals?.content) ||
+        undefined,
+      author_username:
+        safeString(detection.author_username) ||
+        safeString(
+          detection.extracted_data?.signals?.platform_meta?.author_username
+        ) ||
+        undefined,
+      author_followers_count:
+        typeof detection.author_followers_count === "number"
+          ? detection.author_followers_count
+          : typeof detection.extracted_data?.signals?.platform_meta
+              ?.author_followers_count === "number"
+          ? detection.extracted_data.signals.platform_meta
+              .author_followers_count
+          : undefined,
+      engagement_metrics: detection.engagement_metrics
+        ? {
+            likes:
+              typeof detection.engagement_metrics.likes === "number"
+                ? detection.engagement_metrics.likes
+                : 0,
+            comments:
+              typeof detection.engagement_metrics.comments === "number"
+                ? detection.engagement_metrics.comments
+                : 0,
+            shares:
+              typeof detection.engagement_metrics.shares === "number"
+                ? detection.engagement_metrics.shares
+                : 0,
+            reactions:
+              typeof detection.engagement_metrics.reactions === "number"
+                ? detection.engagement_metrics.reactions
+                : 0,
+          }
+        : undefined,
+      extracted_data: detection.extracted_data
+        ? {
+            metadata: detection.extracted_data.metadata
+              ? {
+                  description:
+                    safeString(detection.extracted_data.metadata.description) ||
+                    undefined,
+                  ssl: detection.extracted_data.metadata.ssl
+                    ? {
+                        isSecure: Boolean(
+                          detection.extracted_data.metadata.ssl.isSecure
+                        ),
+                        protocol:
+                          safeString(
+                            detection.extracted_data.metadata.ssl.protocol
+                          ) || "https:",
+                      }
+                    : undefined,
+                }
+              : undefined,
+            signals: detection.extracted_data.signals
+              ? {
+                  ssl_security: detection.extracted_data.signals.ssl_security
+                    ? {
+                        has_ssl: Boolean(
+                          detection.extracted_data.signals.ssl_security.has_ssl
+                        ),
+                        domain_age_days:
+                          typeof detection.extracted_data.signals.ssl_security
+                            .domain_age_days === "number"
+                            ? detection.extracted_data.signals.ssl_security
+                                .domain_age_days
+                            : 0,
+                        ssl_expired: Boolean(
+                          detection.extracted_data.signals.ssl_security
+                            .ssl_expired
+                        ),
+                        is_new_domain: Boolean(
+                          detection.extracted_data.signals.ssl_security
+                            .is_new_domain
+                        ),
+                      }
+                    : undefined,
+                  artifacts: detection.extracted_data.signals.artifacts
+                    ? {
+                        hashtags: Array.isArray(
+                          detection.extracted_data.signals.artifacts.hashtags
+                        )
+                          ? detection.extracted_data.signals.artifacts.hashtags.map(
+                              safeString
+                            )
+                          : undefined,
+                      }
+                    : undefined,
+                  engagement_metrics: detection.extracted_data.signals
+                    .engagement_metrics
+                    ? {
+                        likes:
+                          typeof detection.extracted_data.signals
+                            .engagement_metrics.likes === "number"
+                            ? detection.extracted_data.signals
+                                .engagement_metrics.likes
+                            : 0,
+                        comments:
+                          typeof detection.extracted_data.signals
+                            .engagement_metrics.comments === "number"
+                            ? detection.extracted_data.signals
+                                .engagement_metrics.comments
+                            : 0,
+                        shares:
+                          typeof detection.extracted_data.signals
+                            .engagement_metrics.shares === "number"
+                            ? detection.extracted_data.signals
+                                .engagement_metrics.shares
+                            : 0,
+                        reactions:
+                          typeof detection.extracted_data.signals
+                            .engagement_metrics.reactions === "number"
+                            ? detection.extracted_data.signals
+                                .engagement_metrics.reactions
+                            : 0,
+                      }
+                    : undefined,
+                }
+              : undefined,
+            images: Array.isArray(detection.extracted_data.images)
+              ? detection.extracted_data.images
+                  .filter(
+                    (img) => img && (img.s3_url || img.s3Key || img.s3_key)
+                  )
+                  .map((img) => ({
+                    s3_url: safeString(img.s3_url) || safeString(img.s3Url),
+                    s3_key: safeString(img.s3_key) || safeString(img.s3Key),
+                  }))
+              : undefined,
+          }
+        : undefined,
     };
   });
 };

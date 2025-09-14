@@ -42,7 +42,7 @@ const SocialmediaAnalysis: React.FC<SocialmediaAnalysisProps> = ({
         <ModelAttribution />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         <AnalysisCard detection={detection} title="Social Media Analysis" />
         <DetailCard detection={detection} title="Post Details" />
       </div>

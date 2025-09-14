@@ -356,11 +356,11 @@ const LanguageInsight: React.FC<LanguageInsightProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 flex gap-6 h-full min-h-0 max-h-full">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 h-full min-h-0 max-h-full">
         {/* Left Column - Language Cards */}
         <div className="flex-1 flex flex-col h-full min-h-0 max-h-full">
           {/* Sorting Buttons */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <button
               onClick={() => setSortBy("detections")}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${

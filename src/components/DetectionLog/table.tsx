@@ -655,7 +655,7 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
 
         {/* Pagination */}
         <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-t border-gray-200 dark:border-gray-600">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-700 dark:text-gray-300">
                 Showing {startIndex + 1} to{" "}

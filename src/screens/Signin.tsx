@@ -44,22 +44,22 @@ const SignIn: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Image
               src="/logo.png"
               alt="mAIscam Logo"
               width={48}
               height={48}
-              className="mr-3"
+              className="sm:mr-3"
             />
-            <div className="flex items-center">
-              <span className="text-3xl font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <span className="text-2xl sm:text-3xl font-bold">
                 <span style={{ color: "#49A4EF" }}>m</span>
                 <span style={{ color: "#EB6700" }}>AI</span>
                 <span style={{ color: "#49A4EF" }}>scam</span>
               </span>
               <span
-                className="text-2xl font-extrabold ml-4"
+                className="text-lg sm:text-2xl font-extrabold"
                 style={{ color: "#49A4EF" }}
               >
                 Admin Dashboard

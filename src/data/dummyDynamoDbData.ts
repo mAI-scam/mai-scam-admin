@@ -15,7 +15,45 @@ export interface ScamDetection {
   images?: Array<{ s3_url: string; s3_key: string }>;
   analysis: string;
   recommended_action: string;
+  legitimate_url?: string;
   created_at: string;
+  title?: string;
+  content?: string;
+  author_username?: string;
+  author_followers_count?: number | null;
+  engagement_metrics?: {
+    likes: number;
+    comments: number;
+    shares: number;
+    reactions: number;
+  };
+  extracted_data?: {
+    metadata?: {
+      description?: string;
+      ssl?: {
+        isSecure: boolean;
+        protocol: string;
+      };
+    };
+    signals?: {
+      ssl_security?: {
+        has_ssl: boolean;
+        domain_age_days: number;
+        ssl_expired: boolean;
+        is_new_domain: boolean;
+      };
+      artifacts?: {
+        hashtags?: string[];
+      };
+      engagement_metrics?: {
+        likes: number;
+        comments: number;
+        shares: number;
+        reactions: number;
+      };
+    };
+    images?: Array<{ s3_url: string; s3_key: string }>;
+  };
 }
 
 export interface ScamStats {
