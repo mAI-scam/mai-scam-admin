@@ -167,10 +167,12 @@ const SignIn: React.FC = () => {
                   className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   style={{ backgroundColor: "#49A4EF" }}
                   onMouseEnter={(e) =>
-                    (e.target.style.backgroundColor = "#3B82F6")
+                    ((e.target as HTMLButtonElement).style.backgroundColor =
+                      "#3B82F6")
                   }
                   onMouseLeave={(e) =>
-                    (e.target.style.backgroundColor = "#49A4EF")
+                    ((e.target as HTMLButtonElement).style.backgroundColor =
+                      "#49A4EF")
                   }
                 >
                   {isLoading ? (
