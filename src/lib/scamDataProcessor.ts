@@ -67,6 +67,11 @@ interface RawDetection {
         shares?: unknown;
         reactions?: unknown;
       };
+      content_analysis?: {
+        title?: unknown;
+        content?: unknown;
+        [key: string]: unknown;
+      };
       [key: string]: unknown;
     };
     content_analysis?: {

@@ -111,13 +111,6 @@ A comprehensive admin dashboard for monitoring and analyzing cyber threat detect
 - **Country mapping**: Geographic correlation of threat origins
 - **Regional insights**: Tailored analysis for Southeast Asian cyber threats
 
-## 📱 Responsive Design
-
-- **Mobile-friendly**: Optimized for all device sizes
-- **Dark mode support**: Comfortable viewing in any lighting condition
-- **Accessible interface**: User-friendly design with clear navigation
-- **Real-time updates**: Live data refresh without page reload
-
 ## 🚀 Getting Started
 
 1. **Visit the dashboard** at your deployed URL
