@@ -48,26 +48,21 @@ const DetailCard: React.FC<DetailCardProps> = ({
 
         {/* Website specific: Title */}
         {detection.content_type === "website" && (
-          <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400 mb-1">Title</span>
-            <div className="text-gray-900 dark:text-white text-sm bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">Title</span>
+            <span className="text-gray-900 dark:text-white">
               {detection.title || "No title available"}
-            </div>
+            </span>
           </div>
         )}
 
-        {/* Website specific: URL */}
+        {/* Website specific: Domain */}
         {detection.content_type === "website" && (
-          <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400 mb-1">URL</span>
-            <a
-              href={detection.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 hover:underline break-all"
-            >
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">Domain</span>
+            <span className="text-gray-900 dark:text-white">
               {detection.url || "N/A"}
-            </a>
+            </span>
           </div>
         )}
 
@@ -84,16 +79,14 @@ const DetailCard: React.FC<DetailCardProps> = ({
             </div>
           )}
 
-        {/* Website specific: Content (truncated) */}
+        {/* Website specific: Content */}
         {detection.content_type === "website" && detection.content && (
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400 mb-1">
-              Content (truncated)
+              Content
             </span>
             <div className="text-gray-900 dark:text-white text-sm bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-              {detection.content.length > 500
-                ? `${detection.content.substring(0, 500)}...`
-                : detection.content}
+              {detection.content}
             </div>
           </div>
         )}

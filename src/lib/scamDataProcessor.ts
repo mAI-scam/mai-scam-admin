@@ -200,14 +200,28 @@ export const transformRawDetections = (
         safeString(detection.analysis_result?.legitimate_url) || undefined,
       created_at: detection.created_at,
       // Add the missing fields
-      title:
-        safeString(detection.title) ||
-        safeString(detection.extracted_data?.content_analysis?.title) ||
-        safeString(detection.extracted_data?.metadata?.title) ||
-        safeString(detection.extracted_data?.signals?.metadata?.title) ||
-        safeString(detection.extracted_data?.metadata?.domain) ||
-        safeString(detection.domain) ||
-        undefined,
+      title: (() => {
+        const title =
+          safeString(detection.title) ||
+          safeString(
+            detection.extracted_data?.signals?.content_analysis?.title
+          ) ||
+          safeString(detection.extracted_data?.metadata?.description) ||
+          undefined;
+
+        if (detection.content_type === "website") {
+          console.log("🔍 Title mapping debug:", {
+            id: detection["mai-scam"],
+            rawTitle: detection.title,
+            contentAnalysisTitle:
+              detection.extracted_data?.signals?.content_analysis?.title,
+            description: detection.extracted_data?.metadata?.description,
+            finalTitle: title,
+          });
+        }
+
+        return title;
+      })(),
       content:
         safeString(detection.content) ||
         safeString(detection.extracted_data?.content) ||
