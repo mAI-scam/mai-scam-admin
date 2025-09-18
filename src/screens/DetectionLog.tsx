@@ -32,6 +32,7 @@ interface DetectionLogProps extends SectionProps {
   pageInput: string;
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
+  onItemsPerPageChange: (value: number) => void;
   getLanguageDisplayName: (languageCode: string) => string;
   onOpenAnalysis?: (detection: DashboardData["recentDetections"][0]) => void;
   pagination?: {
@@ -59,6 +60,7 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
   pageInput,
   setPageInput,
   itemsPerPage,
+  onItemsPerPageChange,
   getLanguageDisplayName,
   onOpenAnalysis,
   pagination,
@@ -92,6 +94,7 @@ const DetectionLog: React.FC<DetectionLogProps> = ({
         pageInput={pageInput}
         setPageInput={setPageInput}
         itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={onItemsPerPageChange}
         getLanguageDisplayName={getLanguageDisplayName}
         onRowClick={onOpenAnalysis}
         pagination={pagination}

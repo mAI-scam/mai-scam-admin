@@ -6,6 +6,7 @@ import {
   LANGUAGE_ABBREVIATIONS,
   getContentTypeDisplayName,
 } from "@/data/constants";
+import ItemsPerPageSelector from "./ItemsPerPageSelector";
 
 // Updated interface with pagination support
 
@@ -32,6 +33,7 @@ interface DetectionTableProps {
   pageInput: string;
   setPageInput: React.Dispatch<React.SetStateAction<string>>;
   itemsPerPage: number;
+  onItemsPerPageChange: (value: number) => void;
   getLanguageDisplayName: (languageCode: string) => string;
   onRowClick?: (detection: DashboardData["recentDetections"][0]) => void;
   pagination?: {
@@ -58,6 +60,7 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
   pageInput,
   setPageInput,
   itemsPerPage,
+  onItemsPerPageChange,
   getLanguageDisplayName,
   onRowClick,
   pagination,
@@ -655,7 +658,7 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
 
         {/* Pagination */}
         <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-t border-gray-200 dark:border-gray-600">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-700 dark:text-gray-300">
                 Showing {startIndex + 1} to{" "}
@@ -667,6 +670,21 @@ const DetectionTable: React.FC<DetectionTableProps> = ({
                   </span>
                 )}
               </span>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {/* Simple fallback selector */}
+              <select
+                value={itemsPerPage}
+                onChange={(e) => onItemsPerPageChange(parseInt(e.target.value))}
+                className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
             </div>
 
             <div className="flex items-center space-x-2">

@@ -8,6 +8,10 @@ import {
   fetchDashboardDataFromAPI,
   checkDynamoDBConfiguration,
 } from "@/lib/dashboardApi";
+import {
+  calculateStats,
+  calculateLanguageInsights,
+} from "@/lib/scamDataProcessor";
 import { getLanguageDisplayName, getPossibleCountries } from "@/data/constants";
 import { LanguageInsight as ApiLanguageInsight } from "@/data/dummyDynamoDbData";
 import Overview from "@/screens/Overview";
@@ -49,6 +53,26 @@ const Dashboard: React.FC<DashboardProps> = () => {
   >([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+
+  // Helper function to recalculate dashboard data with complete statistics
+  const recalculateDashboardDataWithAllDetections = (
+    baseData: DashboardData,
+    allDetections: DashboardData["recentDetections"]
+  ): DashboardData => {
+    // Recalculate stats from all detections
+    const completeStats = calculateStats(allDetections);
+
+    // Recalculate language insights from all detections
+    const completeLanguageInsights = calculateLanguageInsights(allDetections);
+
+    // Return updated dashboard data with complete statistics
+    return {
+      ...baseData,
+      stats: completeStats,
+      languageInsights: completeLanguageInsights,
+      recentDetections: allDetections, // Use all detections for the log
+    };
+  };
 
   // Filter states for detections
   const [typeFilters, setTypeFilters] = useState({
@@ -95,7 +119,14 @@ const Dashboard: React.FC<DashboardProps> = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10); // Default to 10, user can customize
+
+  // Handler for itemsPerPage change - reset to page 1 when changing items per page
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+    setPageInput("1");
+  };
 
   // Pre-calculated language insights state
   const [processedLanguageInsights, setProcessedLanguageInsights] = useState<
@@ -132,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
           user.authType === "google" &&
           (await checkDynamoDBConfiguration())
         ) {
-          const result = await fetchDashboardDataFromAPI(1, 100);
+          const result = await fetchDashboardDataFromAPI(1, 500);
           data = result.data || (await getDummyData());
           newPagination = result.pagination || null;
 
@@ -154,9 +185,14 @@ const Dashboard: React.FC<DashboardProps> = () => {
           }
         }
 
-        setDashboardData(data);
+        // Recalculate dashboard data with complete statistics from all detections
+        const updatedData = recalculateDashboardDataWithAllDetections(
+          data,
+          allDetections.length > 0 ? allDetections : data.recentDetections
+        );
+        setDashboardData(updatedData);
         setPagination(newPagination);
-        setLanguageFilters(generateLanguageFilters(data));
+        setLanguageFilters(generateLanguageFilters(updatedData));
 
         // Pre-calculate language insights to avoid recalculation on navigation
         if (data.languageInsights && data.languageInsights.length > 0) {
@@ -231,9 +267,10 @@ const Dashboard: React.FC<DashboardProps> = () => {
         console.error("Error loading dashboard data:", error);
         // Fallback to dummy data on error
         const fallbackData = await getDummyData();
-        setDashboardData(fallbackData);
         setAllDetections(fallbackData.recentDetections);
         setPagination(null);
+        // Use fallback data as-is since it's already complete
+        setDashboardData(fallbackData);
         setLanguageFilters(generateLanguageFilters(fallbackData));
 
         // Pre-calculate language insights for fallback data too
@@ -322,7 +359,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
       setLoadMoreError(null);
       const result = await fetchDashboardDataFromAPI(
         1,
-        100,
+        500,
         pagination.lastEvaluatedKey
       );
 
@@ -330,11 +367,15 @@ const Dashboard: React.FC<DashboardProps> = () => {
         setAllDetections((prev) => [...prev, ...result.data!.recentDetections]);
         setPagination(result.pagination);
 
-        // Update dashboard data with all detections
-        const updatedData = {
-          ...dashboardData!,
-          recentDetections: [...allDetections, ...result.data.recentDetections],
-        };
+        // Update dashboard data with all detections and recalculate complete statistics
+        const newAllDetections = [
+          ...allDetections,
+          ...result.data.recentDetections,
+        ];
+        const updatedData = recalculateDashboardDataWithAllDetections(
+          dashboardData!,
+          newAllDetections
+        );
         setDashboardData(updatedData);
       } else {
         setLoadMoreError("No more data available or failed to load more data");
@@ -350,6 +391,17 @@ const Dashboard: React.FC<DashboardProps> = () => {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Recalculate dashboard data whenever allDetections changes (for complete statistics)
+  useEffect(() => {
+    if (dashboardData && allDetections.length > 0) {
+      const updatedData = recalculateDashboardDataWithAllDetections(
+        dashboardData,
+        allDetections
+      );
+      setDashboardData(updatedData);
+    }
+  }, [allDetections.length]); // Only recalculate when the number of detections changes
 
   const navigateToDetectionsWithFilter = (
     typeFilter?: string,
@@ -545,6 +597,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
             pageInput={pageInput}
             setPageInput={setPageInput}
             itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={handleItemsPerPageChange}
             getLanguageDisplayName={getLanguageDisplayName}
             onOpenAnalysis={handleOpenAnalysis}
             pagination={pagination}

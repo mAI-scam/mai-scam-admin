@@ -95,7 +95,7 @@ const isDynamoDBConfigured = (): boolean => {
 
 // Fetch scam detections from DynamoDB with pagination support
 const fetchScamDetectionsFromDynamoDB = async (
-  limit: number = 100,
+  limit: number = 500,
   lastEvaluatedKey?: Record<string, unknown>
 ) => {
   if (!docClient) {
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
     // Parse query parameters for pagination
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const limit = parseInt(searchParams.get("limit") || "500");
     const lastEvaluatedKey = searchParams.get("lastEvaluatedKey");
 
     // Parse lastEvaluatedKey if provided

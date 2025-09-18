@@ -30,7 +30,7 @@ export const checkDynamoDBConfiguration = async (): Promise<boolean> => {
 // Fetch dashboard data from server-side API with pagination support
 export const fetchDashboardDataFromAPI = async (
   page: number = 1,
-  limit: number = 100,
+  limit: number = 500,
   lastEvaluatedKey?: Record<string, unknown>
 ): Promise<{
   data: DashboardData | null;

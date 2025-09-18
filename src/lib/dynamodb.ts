@@ -65,7 +65,7 @@ interface DynamoScamDetection {
 
 // Fetch scam detections from DynamoDB with pagination support
 export const fetchScamDetectionsFromDynamoDB = async (
-  limit: number = 100,
+  limit: number = 500,
   lastEvaluatedKey?: Record<string, unknown>
 ) => {
   try {
@@ -98,7 +98,7 @@ export const fetchScamDetectionsFromDynamoDB = async (
 
 // Main function to fetch all dashboard data from DynamoDB with pagination
 export const fetchDashboardDataFromDynamoDB = async (
-  limit: number = 100,
+  limit: number = 500,
   lastEvaluatedKey?: Record<string, unknown>
 ): Promise<{
   data: DashboardData | null;
